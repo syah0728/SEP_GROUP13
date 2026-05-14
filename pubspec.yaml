@@ -1,0 +1,32 @@
+name: attendance_and_operations
+description: "SAMS 2026 - Attendance and Operations System"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+  # Firebase
+  firebase_core: ^3.0.0
+  cloud_firestore: ^5.0.0
+
+  # QR Code Generation & Scanning
+  qr_flutter: ^4.1.0
+  mobile_scanner: ^5.0.0
+
+  # GPS & Permissions
+  geolocator: ^12.0.0
+  permission_handler: ^11.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

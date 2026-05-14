@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "763588114877",
+    "project_id": "sams13-attendanceoperation",
+    "storage_bucket": "sams13-attendanceoperation.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:763588114877:android:f9065254982417863afad4",
+        "android_client_info": {
+          "package_name": "sams.group13"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAsUinGAt2fqffRQkjjTpPxg7H7jpJWaAI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
