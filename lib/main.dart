@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import 'firebase_options.dart';
 import 'services/attendance_service.dart';
+import 'services/firebase_seed_service.dart';
 import 'theme/app_theme.dart';
 import 'screens/actor_selection_view.dart';
 import 'screens/lecturer_shell.dart';
@@ -14,6 +15,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   await FirebaseAttendanceService().seedIfNeeded();
+  await FirebaseSeedService().seedIfNeeded();
   runApp(const AttendanceApp());
 }
 
