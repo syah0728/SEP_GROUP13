@@ -2,20 +2,20 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/manage_attendance/student_models.dart';
 
-// ── Firestore Mappers (Firebase logic isolated here, not in models) ────────────
+// ── Firestore Mappers ─────────────────────────────────────────────────────────
 
 StudentProfile _studentFromDoc(Map<String, dynamic> d) => StudentProfile(
-  name: d['name'] ?? '',
-  studentId: d['studentId'] ?? '',
-  matricId: d['matricId'] ?? '',
-  program: d['program'] ?? '',
+  name: d['studentName'] ?? d['name'] ?? '',
+  studentId: d['studentID'] ?? d['studentId'] ?? '',
+  matricId: d['matricId'] ?? d['matricID'] ?? '',
+  program: d['programme'] ?? d['program'] ?? '',
 );
 
 StudentClassDetails _classDetailsFromDoc(String id, Map<String, dynamic> d) =>
     StudentClassDetails(
       sessionId: id,
-      className: d['courseName'] ?? '',
-      classCode: d['courseCode'] ?? '',
+      className: d['course_name'] ?? d['courseName'] ?? '',
+      classCode: d['courseID'] ?? d['courseCode'] ?? '',
       section: d['section'] ?? '',
       date: d['date'] ?? '',
       time: d['timeLabel'] ?? '',
@@ -26,9 +26,9 @@ StudentClassDetails _classDetailsFromDoc(String id, Map<String, dynamic> d) =>
     );
 
 EnrolledCourse _enrolledCourseFromDoc(Map<String, dynamic> d) => EnrolledCourse(
-  courseCode: d['courseCode'] ?? '',
-  courseName: d['courseName'] ?? '',
-  lecturerName: d['lecturerName'] ?? '',
+  courseCode: d['course_id'] ?? d['courseCode'] ?? '',
+  courseName: d['course_name'] ?? d['courseName'] ?? '',
+  lecturerName: d['lecturer_name'] ?? d['lecturerName'] ?? '',
   curriculum: d['curriculum'] ?? '',
 );
 
@@ -99,11 +99,9 @@ class FirebaseStudentAttendanceService implements StudentAttendanceService {
   }) async {
     final recordId = '${classDetails.sessionId}_$studentId';
 
-    // Rule: Students can submit attendance only once per session [SRS Rule 3]
-    final existing = await _db
-        .collection('attendanceRecords')
-        .doc(recordId)
-        .get();
+    // Rule: Students can submit attendance only once per session
+    final existing =
+        await _db.collection('attendanceRecords').doc(recordId).get();
     if (existing.exists && existing.data()?['status'] == 'present') {
       throw const AlreadySubmittedException();
     }
@@ -111,14 +109,14 @@ class FirebaseStudentAttendanceService implements StudentAttendanceService {
     final now = DateTime.now();
 
     await _db.collection('attendanceRecords').doc(recordId).set({
-      'sessionId': classDetails.sessionId,
-      'courseCode': classDetails.classCode,
+      'sessionID': classDetails.sessionId,
+      'courseID': classDetails.classCode,
       'courseName': classDetails.className,
       'section': classDetails.section,
       'date': classDetails.date,
       'timeLabel': classDetails.time,
-      'studentId': studentId,
-      'matricId': matricId,
+      'studentID': studentId,
+      'matricID': matricId,
       'studentName': studentName,
       'status': 'present',
       'submittedAt': FieldValue.serverTimestamp(),
@@ -133,10 +131,19 @@ class FirebaseStudentAttendanceService implements StudentAttendanceService {
 
   @override
   Future<List<EnrolledCourse>> fetchEnrolledCourses(String studentId) async {
-    final snap = await _db
+    // Try ERD field name first, fallback to old field name
+    var snap = await _db
         .collection('enrollments')
-        .where('studentId', isEqualTo: studentId)
+        .where('studentID', isEqualTo: studentId)
         .get();
+
+    if (snap.docs.isEmpty) {
+      snap = await _db
+          .collection('enrollments')
+          .where('studentId', isEqualTo: studentId)
+          .get();
+    }
+
     return snap.docs.map((d) => _enrolledCourseFromDoc(d.data())).toList();
   }
 
@@ -145,13 +152,23 @@ class FirebaseStudentAttendanceService implements StudentAttendanceService {
     required String studentId,
     required EnrolledCourse course,
   }) async {
-    final snap = await _db
+    // Try ERD field names first, fallback to old field names
+    var snap = await _db
         .collection('attendanceRecords')
-        .where('studentId', isEqualTo: studentId)
-        .where('courseCode', isEqualTo: course.courseCode)
+        .where('studentID', isEqualTo: studentId)
+        .where('courseID', isEqualTo: course.courseCode)
         .get();
 
-    final history = snap.docs.map((d) => _historyFromDoc(d.data())).toList();
+    if (snap.docs.isEmpty) {
+      snap = await _db
+          .collection('attendanceRecords')
+          .where('studentId', isEqualTo: studentId)
+          .where('courseCode', isEqualTo: course.courseCode)
+          .get();
+    }
+
+    final history =
+        snap.docs.map((d) => _historyFromDoc(d.data())).toList();
 
     history.sort((a, b) => b.date.compareTo(a.date));
 

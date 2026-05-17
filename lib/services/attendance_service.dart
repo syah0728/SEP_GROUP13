@@ -4,13 +4,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/manage_attendance/attendance_models.dart';
 
-// ── Firestore Mappers (Firebase logic isolated here, not in models) ────────────
+// ── Firestore Mappers ─────────────────────────────────────────────────────────
 
 LecturerProfile _lecturerFromDoc(Map<String, dynamic> d) => LecturerProfile(
-  name: d['name'] ?? '',
-  lecturerId: d['lecturerId'] ?? '',
-  title: d['title'] ?? '',
-  semesterLabel: d['semesterLabel'] ?? '',
+  name: d['lecturer_name'] ?? d['name'] ?? '',
+  lecturerId: d['lecturerID'] ?? d['lecturerId'] ?? '',
+  title: d['department'] ?? d['title'] ?? '',
+  semesterLabel: d['semesterLabel'] ?? 'Semester 2, 2025/2026',
 );
 
 SessionOption _sessionFromDoc(String id, Map<String, dynamic> d) =>
@@ -28,26 +28,28 @@ SessionOption _sessionFromDoc(String id, Map<String, dynamic> d) =>
 
 Course _courseFromDoc(Map<String, dynamic> d, List<SessionOption> schedules) =>
     Course(
-      courseName: d['courseName'] ?? '',
-      courseCode: d['courseCode'] ?? '',
+      courseName: d['course_name'] ?? d['courseName'] ?? '',
+      courseCode: d['course_id'] ?? d['courseCode'] ?? '',
       curriculum: d['curriculum'] ?? '',
-      semesterLabel: d['semesterLabel'] ?? '',
+      semesterLabel: d['semesterLabel'] ?? 'Semester 2, 2025/2026',
       enrolledCount: (d['enrolledCount'] ?? 0) as int,
-      lecturerId: d['lecturerId'] ?? '',
-      lecturerName: d['lecturerName'] ?? '',
+      lecturerId: d['lecturerID'] ?? d['lecturerId'] ?? '',
+      lecturerName: d['lecturer_name'] ?? d['lecturerName'] ?? '',
       schedules: schedules,
     );
 
 StudentAttendanceRecord _recordFromDoc(String id, Map<String, dynamic> d) =>
     StudentAttendanceRecord(
       recordId: id,
-      matricId: d['matricId'] ?? '',
+      matricId: d['matricID'] ?? d['matricId'] ?? '',
       name: d['studentName'] ?? '',
-      studentId: d['studentId'] ?? '',
+      studentId: d['studentID'] ?? d['studentId'] ?? '',
       status: d['status'] == 'present'
           ? AttendanceStatus.present
           : AttendanceStatus.absent,
     );
+
+// ── Abstract Interface ────────────────────────────────────────────────────────
 
 abstract class AttendanceService {
   Future<LecturerProfile?> fetchLecturerProfile(String lecturerId);
@@ -67,6 +69,8 @@ abstract class AttendanceService {
   });
 }
 
+// ── Firebase Implementation ───────────────────────────────────────────────────
+
 class FirebaseAttendanceService implements AttendanceService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final _codeGen = _AttendanceCodeGenerator();
@@ -81,10 +85,18 @@ class FirebaseAttendanceService implements AttendanceService {
 
   @override
   Future<List<Course>> fetchAssignedCourses(String lecturerId) async {
-    final snap = await _db
+    // Try ERD field name first, fallback to old field name
+    var snap = await _db
         .collection('courses')
-        .where('lecturerId', isEqualTo: lecturerId)
+        .where('lecturerID', isEqualTo: lecturerId)
         .get();
+
+    if (snap.docs.isEmpty) {
+      snap = await _db
+          .collection('courses')
+          .where('lecturerId', isEqualTo: lecturerId)
+          .get();
+    }
 
     final courses = <Course>[];
     for (final doc in snap.docs) {
@@ -95,10 +107,19 @@ class FirebaseAttendanceService implements AttendanceService {
   }
 
   Future<List<SessionOption>> _fetchSchedules(String courseCode) async {
-    final snap = await _db
+    // schedules collection uses courseCode (implementation detail, not in ERD)
+    var snap = await _db
         .collection('schedules')
         .where('courseCode', isEqualTo: courseCode)
         .get();
+
+    if (snap.docs.isEmpty) {
+      snap = await _db
+          .collection('schedules')
+          .where('courseID', isEqualTo: courseCode)
+          .get();
+    }
+
     return snap.docs.map((d) => _sessionFromDoc(d.id, d.data())).toList();
   }
 
@@ -113,7 +134,7 @@ class FirebaseAttendanceService implements AttendanceService {
         '${course.courseCode}-${session.section}-${session.date}-$code';
 
     final sessionData = {
-      'courseCode': course.courseCode,
+      'courseID': course.courseCode,
       'courseName': course.courseName,
       'scheduleId': session.scheduleId,
       'section': session.section,
@@ -122,7 +143,7 @@ class FirebaseAttendanceService implements AttendanceService {
       'code': code,
       'qrSeed': qrSeed,
       'generatedAt': FieldValue.serverTimestamp(),
-      'lecturerId': lecturerId,
+      'lecturerID': lecturerId,
       'locationName': session.location.name,
       'latitude': session.location.latitude,
       'longitude': session.location.longitude,
@@ -150,26 +171,51 @@ class FirebaseAttendanceService implements AttendanceService {
     required Course course,
     required SessionOption session,
   }) async {
-    final enrollSnap = await _db
+    // Try ERD field name first, fallback to old field name
+    QuerySnapshot enrollSnap = await _db
         .collection('enrollments')
-        .where('courseCode', isEqualTo: course.courseCode)
+        .where('course_id', isEqualTo: course.courseCode)
         .get();
+
+    if (enrollSnap.docs.isEmpty) {
+      enrollSnap = await _db
+          .collection('enrollments')
+          .where('courseCode', isEqualTo: course.courseCode)
+          .get();
+    }
 
     final batch = _db.batch();
     for (final enroll in enrollSnap.docs) {
-      final data = enroll.data();
-      final recordId = '${sessionId}_${data['studentId']}';
+      final data = enroll.data() as Map<String, dynamic>;
+      final studentId = data['studentID'] ?? data['studentId'] ?? '';
+
+      // Get name and matricId from enrollment, fallback to students collection
+      String studentName = data['studentName'] ?? '';
+      String matricId = data['matricID'] ?? data['matricId'] ?? '';
+
+      if (studentName.isEmpty || matricId.isEmpty) {
+        final studentDoc =
+            await _db.collection('students').doc(studentId).get();
+        if (studentDoc.exists) {
+          final sd = studentDoc.data()!;
+          studentName =
+              sd['studentName'] ?? sd['name'] ?? studentName;
+          matricId = sd['matricId'] ?? sd['matricID'] ?? matricId;
+        }
+      }
+
+      final recordId = '${sessionId}_$studentId';
       final ref = _db.collection('attendanceRecords').doc(recordId);
       batch.set(ref, {
-        'sessionId': sessionId,
-        'courseCode': course.courseCode,
+        'sessionID': sessionId,
+        'courseID': course.courseCode,
         'courseName': course.courseName,
         'section': session.section,
         'date': session.date,
         'timeLabel': session.timeLabel,
-        'studentId': data['studentId'] ?? '',
-        'matricId': data['matricId'] ?? '',
-        'studentName': data['studentName'] ?? '',
+        'studentID': studentId,
+        'matricID': matricId,
+        'studentName': studentName,
         'status': 'absent',
         'submittedAt': null,
       });
@@ -182,22 +228,43 @@ class FirebaseAttendanceService implements AttendanceService {
     required Course course,
     required SessionOption session,
   }) async {
-    final sessionSnap = await _db
+    // Try ERD field name first, fallback to old field name
+    var sessionSnap = await _db
         .collection('attendanceSessions')
-        .where('courseCode', isEqualTo: course.courseCode)
+        .where('courseID', isEqualTo: course.courseCode)
         .where('section', isEqualTo: session.section)
         .where('date', isEqualTo: session.date)
         .where('timeLabel', isEqualTo: session.timeLabel)
         .limit(1)
         .get();
 
+    if (sessionSnap.docs.isEmpty) {
+      sessionSnap = await _db
+          .collection('attendanceSessions')
+          .where('courseCode', isEqualTo: course.courseCode)
+          .where('section', isEqualTo: session.section)
+          .where('date', isEqualTo: session.date)
+          .where('timeLabel', isEqualTo: session.timeLabel)
+          .limit(1)
+          .get();
+    }
+
     if (sessionSnap.docs.isEmpty) return [];
 
     final sessionId = sessionSnap.docs.first.id;
-    final recordsSnap = await _db
+
+    // Try ERD field name first, fallback to old field name
+    var recordsSnap = await _db
         .collection('attendanceRecords')
-        .where('sessionId', isEqualTo: sessionId)
+        .where('sessionID', isEqualTo: sessionId)
         .get();
+
+    if (recordsSnap.docs.isEmpty) {
+      recordsSnap = await _db
+          .collection('attendanceRecords')
+          .where('sessionId', isEqualTo: sessionId)
+          .get();
+    }
 
     final records = recordsSnap.docs
         .map((d) => _recordFromDoc(d.id, d.data()))
@@ -229,17 +296,20 @@ class FirebaseAttendanceService implements AttendanceService {
     }
   }
 
+  // ── Seed ───────────────────────────────────────────────────────────────────
+
   Future<void> seedIfNeeded() async {
     final doc = await _db.collection('lecturers').doc('LE210145').get();
     if (!doc.exists) await _seedData();
-    final sessions = await _db.collection('attendanceSessions').limit(1).get();
+    final sessions =
+        await _db.collection('attendanceSessions').limit(1).get();
     if (sessions.docs.isEmpty) await _seedSampleAttendance();
   }
 
   Future<void> _seedSampleAttendance() async {
     final sampleSessions = [
       {
-        'courseCode': 'BCI2013',
+        'courseID': 'BCI2013',
         'courseName': 'Programming Technique',
         'section': '01B',
         'date': '05/04/2026',
@@ -247,7 +317,7 @@ class FirebaseAttendanceService implements AttendanceService {
         'code': 'DEMO01',
       },
       {
-        'courseCode': 'BCI2013',
+        'courseID': 'BCI2013',
         'courseName': 'Programming Technique',
         'section': '01B',
         'date': '12/04/2026',
@@ -255,7 +325,7 @@ class FirebaseAttendanceService implements AttendanceService {
         'code': 'DEMO02',
       },
       {
-        'courseCode': 'BCI2013',
+        'courseID': 'BCI2013',
         'courseName': 'Programming Technique',
         'section': '01B',
         'date': '19/04/2026',
@@ -263,7 +333,7 @@ class FirebaseAttendanceService implements AttendanceService {
         'code': 'DEMO03',
       },
       {
-        'courseCode': 'BCS1023',
+        'courseID': 'BCS1023',
         'courseName': 'Software Engineering',
         'section': '02A',
         'date': '20/04/2026',
@@ -271,7 +341,7 @@ class FirebaseAttendanceService implements AttendanceService {
         'code': 'DEMO04',
       },
       {
-        'courseCode': 'BCS1023',
+        'courseID': 'BCS1023',
         'courseName': 'Software Engineering',
         'section': '02A',
         'date': '27/04/2026',
@@ -287,12 +357,12 @@ class FirebaseAttendanceService implements AttendanceService {
       sessionIds.add(ref.id);
       sessionBatch.set(ref, {
         ...s,
-        'lecturerId': 'LE210145',
+        'lecturerID': 'LE210145',
         'locationName': 'DK1',
         'latitude': 4.2105,
         'longitude': 101.9758,
         'qrSeed':
-            '${s['courseCode']}-${s['section']}-${s['date']}-${s['code']}',
+            '${s['courseID']}-${s['section']}-${s['date']}-${s['code']}',
         'generatedAt': FieldValue.serverTimestamp(),
       });
     }
@@ -310,14 +380,14 @@ class FirebaseAttendanceService implements AttendanceService {
       final s = sampleSessions[i];
       final recordId = '${sessionIds[i]}_A20CS1001';
       recordBatch.set(_db.collection('attendanceRecords').doc(recordId), {
-        'sessionId': sessionIds[i],
-        'courseCode': s['courseCode'],
+        'sessionID': sessionIds[i],
+        'courseID': s['courseID'],
         'courseName': s['courseName'],
         'section': s['section'],
         'date': s['date'],
         'timeLabel': s['timeLabel'],
-        'studentId': 'A20CS1001',
-        'matricId': 'CD21145',
+        'studentID': 'A20CS1001',
+        'matricID': 'CD21145',
         'studentName': 'Ahmad Faiz bin Abdullah',
         'status': sampleStatuses[i],
         'submittedAt': sampleStatuses[i] == 'present'
@@ -331,89 +401,125 @@ class FirebaseAttendanceService implements AttendanceService {
   Future<void> _seedData() async {
     final batch = _db.batch();
 
-    // Lecturers
+    // Lecturers — ERD field names
     batch.set(_db.collection('lecturers').doc('LE210145'), {
-      'name': 'Dr. Hafiz bin Abdullah',
-      'lecturerId': 'LE210145',
-      'title': 'Senior Lecturer, FKOM',
+      'lecturerID': 'LE210145',
+      'lecturer_name': 'Dr. Hafiz bin Abdullah',
+      'department': 'Jabatan Sains Komputer, FKOM',
+      'email': 'hafiz@utm.my',
       'semesterLabel': 'Semester 2, 2025/2026',
     });
 
-    // Students
+    // Students — ERD field names
     batch.set(_db.collection('students').doc('A20CS1001'), {
-      'name': 'Ahmad Faiz bin Abdullah',
-      'studentId': 'A20CS1001',
+      'studentID': 'A20CS1001',
+      'studentName': 'Ahmad Faiz bin Abdullah',
       'matricId': 'CD21145',
-      'program': 'Bachelor of Computer Science',
+      'programme': 'Bachelor of Computer Science (Software Engineering)',
+      'semester': 'Semester 2, 2025/2026',
+      'lecturerID': 'LE210145',
+      'total_credits': 92,
+      'password': 'student123',
     });
     batch.set(_db.collection('students').doc('A20CS1002'), {
-      'name': 'Amalin Aisyah binti Aziz',
-      'studentId': 'A20CS1002',
+      'studentID': 'A20CS1002',
+      'studentName': 'Amalin Aisyah binti Aziz',
       'matricId': 'CD21100',
-      'program': 'Bachelor of Computer Science',
+      'programme': 'Bachelor of Computer Science (Software Engineering)',
+      'semester': 'Semester 2, 2025/2026',
+      'lecturerID': 'LE210145',
+      'total_credits': 88,
+      'password': 'student123',
     });
     batch.set(_db.collection('students').doc('A20CS1003'), {
-      'name': 'Adani binti Mohd Fadzil',
-      'studentId': 'A20CS1003',
+      'studentID': 'A20CS1003',
+      'studentName': 'Adani binti Mohd Fadzil',
       'matricId': 'CD21079',
-      'program': 'Bachelor of Computer Science',
+      'programme': 'Bachelor of Computer Science (Software Engineering)',
+      'semester': 'Semester 2, 2025/2026',
+      'lecturerID': 'LE210145',
+      'total_credits': 85,
+      'password': 'student123',
     });
 
-    // Courses
+    // Courses — ERD field names
     final courses = [
       {
-        'courseName': 'Software Engineering',
-        'courseCode': 'BCS1023',
+        'course_id': 'BCS1023',
+        'course_name': 'Software Engineering',
         'curriculum': 'Curriculum 2020',
         'semesterLabel': 'Semester 2, 2025/2026',
         'enrolledCount': 42,
-        'lecturerId': 'LE210145',
-        'lecturerName': 'Dr. Hafiz bin Abdullah',
+        'lecturerID': 'LE210145',
+        'lecturer_name': 'Dr. Hafiz bin Abdullah',
+        'credits': 3,
+        'description': 'Pengenalan kepada prinsip dan amalan kejuruteraan perisian moden.',
+        'is_published': true,
+        'staffID': 'REG001',
       },
       {
-        'courseName': 'Introduction to Computer Science',
-        'courseCode': 'BCS3013',
+        'course_id': 'BCS3013',
+        'course_name': 'Introduction to Computer Science',
         'curriculum': 'Curriculum 2020',
         'semesterLabel': 'Semester 2, 2025/2026',
         'enrolledCount': 45,
-        'lecturerId': 'LE210145',
-        'lecturerName': 'Dr. Hafiz bin Abdullah',
+        'lecturerID': 'LE210145',
+        'lecturer_name': 'Dr. Hafiz bin Abdullah',
+        'credits': 3,
+        'description': 'Asas-asas dalam sains komputer dan pengaturcaraan.',
+        'is_published': true,
+        'staffID': 'REG001',
       },
       {
-        'courseName': 'Programming Technique',
-        'courseCode': 'BCI2013',
+        'course_id': 'BCI2013',
+        'course_name': 'Programming Technique',
         'curriculum': 'Curriculum 2020',
         'semesterLabel': 'Semester 2, 2025/2026',
         'enrolledCount': 38,
-        'lecturerId': 'LE210145',
-        'lecturerName': 'Dr. Hafiz bin Abdullah',
+        'lecturerID': 'LE210145',
+        'lecturer_name': 'Dr. Hafiz bin Abdullah',
+        'credits': 3,
+        'description': 'Teknik-teknik asas pengaturcaraan menggunakan bahasa pengaturcaraan moden.',
+        'is_published': true,
+        'staffID': 'REG001',
       },
       {
-        'courseName': 'Object Oriented Programming',
-        'courseCode': 'BCS3023',
+        'course_id': 'BCS3023',
+        'course_name': 'Object Oriented Programming',
         'curriculum': 'Curriculum 2020',
         'semesterLabel': 'Semester 2, 2025/2026',
         'enrolledCount': 42,
-        'lecturerId': 'LE210145',
-        'lecturerName': 'Dr. Hafiz bin Abdullah',
+        'lecturerID': 'LE210145',
+        'lecturer_name': 'Dr. Hafiz bin Abdullah',
+        'credits': 3,
+        'description': 'Konsep dan amalan pengaturcaraan berorientasikan objek.',
+        'is_published': true,
+        'staffID': 'REG001',
       },
       {
-        'courseName': '3D Printing Design',
-        'courseCode': 'KCS3023',
+        'course_id': 'KCS3023',
+        'course_name': '3D Printing Design',
         'curriculum': 'Curriculum 2020',
         'semesterLabel': 'Semester 2, 2025/2026',
         'enrolledCount': 29,
-        'lecturerId': 'LE210145',
-        'lecturerName': 'Dr. Hafiz bin Abdullah',
+        'lecturerID': 'LE210145',
+        'lecturer_name': 'Dr. Hafiz bin Abdullah',
+        'credits': 2,
+        'description': 'Reka bentuk dan percetakan 3D menggunakan teknologi terkini.',
+        'is_published': true,
+        'staffID': 'REG001',
       },
     ];
     for (final c in courses) {
-      batch.set(_db.collection('courses').doc(c['courseCode'] as String), c);
+      batch.set(
+        _db.collection('courses').doc(c['course_id'] as String),
+        c,
+      );
     }
 
     await batch.commit();
 
-    // Schedules (written separately — nested collections not supported in batch across collections cleanly)
+    // Schedules — keep courseCode field (implementation detail, not in ERD)
     final schedules = [
       {
         'courseCode': 'BCS1023',
@@ -486,21 +592,21 @@ class FirebaseAttendanceService implements AttendanceService {
     }
     await schedBatch.commit();
 
-    // Enrollments
+    // Enrollments — ERD field names
     final enrollBatch = _db.batch();
     final studentEnrollments = [
       {
-        'studentId': 'A20CS1001',
+        'studentID': 'A20CS1001',
         'matricId': 'CD21145',
         'studentName': 'Ahmad Faiz bin Abdullah',
       },
       {
-        'studentId': 'A20CS1002',
+        'studentID': 'A20CS1002',
         'matricId': 'CD21100',
         'studentName': 'Amalin Aisyah binti Aziz',
       },
       {
-        'studentId': 'A20CS1003',
+        'studentID': 'A20CS1003',
         'matricId': 'CD21079',
         'studentName': 'Adani binti Mohd Fadzil',
       },
@@ -513,19 +619,22 @@ class FirebaseAttendanceService implements AttendanceService {
       'BCS3023',
       'KCS3023',
     ]) {
-      final courseName =
-          courses.firstWhere((c) => c['courseCode'] == courseCode)['courseName']
-              as String;
+      final courseData = courses.firstWhere(
+        (c) => c['course_id'] == courseCode,
+      );
       for (final s in studentEnrollments) {
-        final enrollId = '${s['studentId']}_$courseCode';
+        final enrollId = '${s['studentID']}_$courseCode';
         enrollBatch.set(_db.collection('enrollments').doc(enrollId), {
-          'studentId': s['studentId'],
+          'studentID': s['studentID'],
           'matricId': s['matricId'],
           'studentName': s['studentName'],
-          'courseCode': courseCode,
-          'courseName': courseName,
-          'lecturerName': 'Dr. Hafiz bin Abdullah',
-          'curriculum': 'Curriculum 2020',
+          'course_id': courseCode,
+          'courseName': courseData['course_name'],
+          'lecturerName': courseData['lecturer_name'],
+          'curriculum': courseData['curriculum'],
+          'semester': 'Semester 2, 2025/2026',
+          'status': 'active',
+          'is_registration_open': true,
         });
       }
     }
