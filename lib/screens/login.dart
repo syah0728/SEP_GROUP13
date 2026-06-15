@@ -107,6 +107,20 @@ class _LoginScreenState extends State<LoginScreen> {
         await AppSession.setAdab(adabId: result.id, adabName: result.name);
         if (!mounted) return;
         Navigator.pushReplacementNamed(context, '/dashboard');
+      case 'FK Staff':
+        await AppSession.setFKStaff(
+          fkStaffId: result.id,
+          fkStaffName: result.name,
+        );
+        if (!mounted) return;
+        Navigator.pushReplacementNamed(context, '/fkstaff/dashboard');
+      case 'Treasury':
+        await AppSession.setTreasury(
+          treasuryId: result.id,
+          treasuryName: result.name,
+        );
+        if (!mounted) return;
+        Navigator.pushReplacementNamed(context, '/treasury/dashboard');
     }
   }
 
@@ -284,6 +298,14 @@ class _LoginScreenState extends State<LoginScreen> {
                             DropdownMenuItem(
                               value: 'Student',
                               child: Text('Student'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'FK Staff',
+                              child: Text('FK Staff'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'Treasury',
+                              child: Text('Treasury'),
                             ),
                           ],
                           onChanged: (value) =>

@@ -16,6 +16,9 @@ import 'screens/lecturer_shell.dart';
 import 'screens/student_shell.dart';
 import 'screens/login.dart';
 
+// ---------- Module 3: Academic Screens ----------
+import 'screens/manage_academic/manage_academic_screen.dart';
+
 // ---------- Module 2: Co-Curriculum Screens ----------
 // Adab staff screens (Pusat Adab)
 import 'screens/manage_cocurriculum/pusatadab/adab_dashboard.dart';
@@ -96,6 +99,9 @@ class AttendanceApp extends StatelessWidget {
           '/claims': (context) => const ValidateClaimsScreen(),
           '/attendance': (context) => const AttendanceManagementScreen(),
 
+          // FK Staff routes — Module 3: Academic
+          '/fkstaff/dashboard': (context) => const ManageAcademicScreen(),
+
           // Student routes — Module 2: Co-Curriculum (Purple theme)
           '/student/dashboard': (context) => const StudentDashboard(),
           '/student/modules': (context) => const CoCurriculumModulesScreen(),
@@ -131,6 +137,10 @@ class AttendanceApp extends StatelessWidget {
         );
       case 'Pusat Adab':
         return const AdabDashboard();
+      case 'FK Staff':
+        return const ManageAcademicScreen();
+      case 'Treasury':
+        return const TreasuryDashboardView();
       default:
         return const LoginScreen();
     }

@@ -37,6 +37,10 @@ class AuthService {
         return _loginLecturer(username, password);
       case 'Pusat Adab':
         return _loginAdabStaff(username, password);
+      case 'FK Staff':
+        return _loginFKStaff(username, password);
+      case 'Treasury':
+        return _loginTreasury(username, password);
       default:
         return null;
     }
@@ -96,6 +100,42 @@ class AuthService {
       role: 'Pusat Adab',
       id: (data['adabID'] ?? snap.docs.first.id) as String,
       name: (data['staffName'] ?? 'Staff') as String,
+    );
+  }
+
+  Future<LoginResult?> _loginFKStaff(String username, String password) async {
+    final snap = await _db
+        .collection('registrars')
+        .where('username', isEqualTo: username)
+        .limit(1)
+        .get();
+    if (snap.docs.isEmpty) return null;
+
+    final data = snap.docs.first.data();
+    if (data['password'] != password) return null;
+
+    return LoginResult(
+      role: 'FK Staff',
+      id: (data['staffID'] ?? snap.docs.first.id) as String,
+      name: (data['staff_name'] ?? 'FK Staff') as String,
+    );
+  }
+
+  Future<LoginResult?> _loginTreasury(String username, String password) async {
+    final snap = await _db
+        .collection('treasury')
+        .where('username', isEqualTo: username)
+        .limit(1)
+        .get();
+    if (snap.docs.isEmpty) return null;
+
+    final data = snap.docs.first.data();
+    if (data['password'] != password) return null;
+
+    return LoginResult(
+      role: 'Treasury',
+      id: (data['treasuryID'] ?? snap.docs.first.id) as String,
+      name: (data['treasuryName'] ?? 'Treasury') as String,
     );
   }
 }

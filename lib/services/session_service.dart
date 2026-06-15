@@ -19,6 +19,10 @@ class AppSession {
   static const _keyLecturerName = 'session_lecturer_name';
   static const _keyAdabId = 'session_adab_id';
   static const _keyAdabName = 'session_adab_name';
+  static const _keyFkStaffId = 'session_fk_staff_id';
+  static const _keyFkStaffName = 'session_fk_staff_name';
+  static const _keyTreasuryId = 'session_treasury_id';
+  static const _keyTreasuryName = 'session_treasury_name';
 
   static String? _role;
 
@@ -32,6 +36,12 @@ class AppSession {
   static String? _adabId;
   static String? _adabName;
 
+  static String? _fkStaffId;
+  static String? _fkStaffName;
+
+  static String? _treasuryId;
+  static String? _treasuryName;
+
   static String? get role => _role;
 
   static String get studentId => _studentId ?? 'A20CS1004';
@@ -43,6 +53,12 @@ class AppSession {
 
   static String get adabId => _adabId ?? 'ADAB001';
   static String get adabName => _adabName ?? 'Nurul Aisyah';
+
+  static String get fkStaffId => _fkStaffId ?? 'REG001';
+  static String get fkStaffName => _fkStaffName ?? 'FK Staff';
+
+  static String get treasuryId => _treasuryId ?? 'TRES001';
+  static String get treasuryName => _treasuryName ?? 'Treasury';
 
   /// Reloads the session from local storage. Call this once on app startup,
   /// before [runApp], so a page reload doesn't lose the logged-in identity.
@@ -56,6 +72,10 @@ class AppSession {
     _lecturerName = prefs.getString(_keyLecturerName);
     _adabId = prefs.getString(_keyAdabId);
     _adabName = prefs.getString(_keyAdabName);
+    _fkStaffId = prefs.getString(_keyFkStaffId);
+    _fkStaffName = prefs.getString(_keyFkStaffName);
+    _treasuryId = prefs.getString(_keyTreasuryId);
+    _treasuryName = prefs.getString(_keyTreasuryName);
   }
 
   static Future<void> setStudent({
@@ -107,6 +127,34 @@ class AppSession {
     await prefs.setString(_keyAdabName, adabName);
   }
 
+  static Future<void> setFKStaff({
+    required String fkStaffId,
+    required String fkStaffName,
+  }) async {
+    _role = 'FK Staff';
+    _fkStaffId = fkStaffId;
+    _fkStaffName = fkStaffName;
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyRole, _role!);
+    await prefs.setString(_keyFkStaffId, fkStaffId);
+    await prefs.setString(_keyFkStaffName, fkStaffName);
+  }
+
+  static Future<void> setTreasury({
+    required String treasuryId,
+    required String treasuryName,
+  }) async {
+    _role = 'Treasury';
+    _treasuryId = treasuryId;
+    _treasuryName = treasuryName;
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyRole, _role!);
+    await prefs.setString(_keyTreasuryId, treasuryId);
+    await prefs.setString(_keyTreasuryName, treasuryName);
+  }
+
   static Future<void> clear() async {
     _role = null;
     _studentId = null;
@@ -116,6 +164,10 @@ class AppSession {
     _lecturerName = null;
     _adabId = null;
     _adabName = null;
+    _fkStaffId = null;
+    _fkStaffName = null;
+    _treasuryId = null;
+    _treasuryName = null;
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_keyRole);
@@ -126,5 +178,9 @@ class AppSession {
     await prefs.remove(_keyLecturerName);
     await prefs.remove(_keyAdabId);
     await prefs.remove(_keyAdabName);
+    await prefs.remove(_keyFkStaffId);
+    await prefs.remove(_keyFkStaffName);
+    await prefs.remove(_keyTreasuryId);
+    await prefs.remove(_keyTreasuryName);
   }
 }
