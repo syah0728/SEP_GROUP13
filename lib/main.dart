@@ -8,6 +8,7 @@ import 'utils/app_colors.dart';
 import 'theme/app_theme.dart';
 import 'services/attendance_service.dart';
 import 'services/firebase_seed_service.dart';
+import 'services/session_service.dart';
 
 // ---------- Shared / Shell Screens ----------
 import 'screens/actor_selection_view.dart';
@@ -43,6 +44,11 @@ void main() async {
   // Initializing real Firebase config from the base code
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
+  // Restore whoever was logged in before a page reload (e.g. browser back)
+  // so the sidebar/header keeps showing their identity instead of resetting
+  // to the demo defaults.
+  await AppSession.restore();
+
   // Seed functions from the base project module (Attendance/Operations)
   await FirebaseAttendanceService().seedIfNeeded();
   await FirebaseSeedService().seedIfNeeded();
@@ -63,8 +69,13 @@ class AttendanceApp extends StatelessWidget {
         theme: AppTheme.light().copyWith(
           scaffoldBackgroundColor: AppColors.background,
         ),
-        // App starts with the login screen
-        home: const MobilePreviewFrame(child: LoginScreen()),
+        // App starts with the login screen, unless a session was restored
+        // after a page reload, in which case go straight back to that role's
+        // dashboard.
+        home: Builder(
+          builder: (context) =>
+              MobilePreviewFrame(child: _initialScreen(context)),
+        ),
 
         // Named routes added dynamically for Module 2 cross-navigation
         routes: {
@@ -73,7 +84,7 @@ class AttendanceApp extends StatelessWidget {
 
           // Lecturer route (Module 1)
           '/lecturer': (context) => LecturerShell(
-                lecturerId: 'LE210145',
+                lecturerId: AppSession.lecturerId,
                 onSwitchActor: () =>
                     Navigator.pushReplacementNamed(context, '/login'),
               ),
@@ -104,6 +115,25 @@ class AttendanceApp extends StatelessWidget {
         },
       ),
     );
+  }
+
+  /// Picks the first screen to show based on a session restored from local
+  /// storage, falling back to the login screen if nobody is logged in.
+  Widget _initialScreen(BuildContext context) {
+    switch (AppSession.role) {
+      case 'Student':
+        return const StudentDashboard();
+      case 'Lecturer':
+        return LecturerShell(
+          lecturerId: AppSession.lecturerId,
+          onSwitchActor: () =>
+              Navigator.pushReplacementNamed(context, '/login'),
+        );
+      case 'Pusat Adab':
+        return const AdabDashboard();
+      default:
+        return const LoginScreen();
+    }
   }
 }
 

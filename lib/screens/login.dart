@@ -32,6 +32,14 @@ class _LoginScreenState extends State<LoginScreen> {
 
   final _authService = AuthService();
 
+  @override
+  void initState() {
+    super.initState();
+    // Showing the login screen always ends whatever session was active
+    // (e.g. after logout), so a page reload doesn't restore it.
+    AppSession.clear();
+  }
+
   // Cleanup controllers when screen is destroyed
   @override
   void dispose() {
@@ -88,20 +96,23 @@ class _LoginScreenState extends State<LoginScreen> {
 
     switch (result.role) {
       case 'Student':
-        AppSession.setStudent(
+        await AppSession.setStudent(
           studentId: result.id,
           studentName: result.name,
           matricId: result.matricId ?? result.id,
         );
+        if (!mounted) return;
         Navigator.pushReplacementNamed(context, '/student/dashboard');
       case 'Lecturer':
-        AppSession.setLecturer(
+        await AppSession.setLecturer(
           lecturerId: result.id,
           lecturerName: result.name,
         );
+        if (!mounted) return;
         Navigator.pushReplacementNamed(context, '/lecturer');
       case 'Pusat Adab':
-        AppSession.setAdab(adabId: result.id, adabName: result.name);
+        await AppSession.setAdab(adabId: result.id, adabName: result.name);
+        if (!mounted) return;
         Navigator.pushReplacementNamed(context, '/dashboard');
     }
   }
