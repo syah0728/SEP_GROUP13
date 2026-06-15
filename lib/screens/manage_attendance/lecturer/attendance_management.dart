@@ -3,6 +3,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../../controllers/manage_attendance/attendance_controller.dart';
 import '../../../models/manage_attendance/attendance_models.dart';
+import '../../../services/session_service.dart';
 
 // ── Shared App Scaffold ───────────────────────────────────────────────────────
 
@@ -484,34 +485,82 @@ class LecturerDrawer extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.person,
+                        color: Colors.white,
+                        size: 28,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            AppSession.lecturerName,
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          Text(
+                            AppSession.lecturerId,
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.75),
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: Colors.white),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
                 Container(
-                  width: 44,
-                  height: 44,
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    shape: BoxShape.circle,
+                    color: Colors.white.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(
-                    Icons.school_rounded,
-                    color: Colors.white,
-                    size: 22,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  'Lecturer Portal',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'SAMS 2026',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.75),
-                    fontSize: 13,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Role',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.75),
+                          fontSize: 12,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      const Text(
+                        'Lecturer',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -541,6 +590,8 @@ class LecturerDrawer extends StatelessWidget {
                     onTap: () => onSelect(2),
                   ),
                   const Spacer(),
+                  const Divider(height: 1),
+                  const SizedBox(height: 8),
                   InkWell(
                     borderRadius: BorderRadius.circular(10),
                     onTap: onSwitchActor,
@@ -552,13 +603,13 @@ class LecturerDrawer extends StatelessWidget {
                       child: Row(
                         children: [
                           Icon(
-                            Icons.swap_horiz_rounded,
+                            Icons.logout,
                             color: Color(0xFFFF4B66),
                             size: 18,
                           ),
                           SizedBox(width: 10),
                           Text(
-                            'Switch Actor',
+                            'Logout',
                             style: TextStyle(
                               color: Color(0xFFFF4B66),
                               fontSize: 14,

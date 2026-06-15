@@ -466,6 +466,8 @@ class FirebaseAttendanceService implements AttendanceService {
       'department': 'Jabatan Sains Komputer, FKOM',
       'email': 'hafiz@utm.my',
       'semesterLabel': 'Semester 2, 2025/2026',
+      'username': 'LE210145',
+      'password': 'lecturer123',
     });
 
     // Students — ERD field names
@@ -497,6 +499,16 @@ class FirebaseAttendanceService implements AttendanceService {
       'semester': 'Semester 2, 2025/2026',
       'lecturerID': 'LE210145',
       'total_credits': 85,
+      'password': 'student123',
+    });
+    batch.set(_db.collection('students').doc('A20CS1004'), {
+      'studentID': 'A20CS1004',
+      'studentName': 'Ahmad Imran',
+      'matricId': 'CD210145',
+      'programme': 'Bachelor of Computer Science (Software Engineering)',
+      'semester': 'Semester 2, 2025/2026',
+      'lecturerID': 'LE210145',
+      'total_credits': 90,
       'password': 'student123',
     });
 
@@ -667,6 +679,11 @@ class FirebaseAttendanceService implements AttendanceService {
         'studentID': 'A20CS1003',
         'matricId': 'CD21079',
         'studentName': 'Adani binti Mohd Fadzil',
+      },
+      {
+        'studentID': 'A20CS1004',
+        'matricId': 'CD210145',
+        'studentName': 'Ahmad Imran',
       },
     ];
 

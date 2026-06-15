@@ -7,12 +7,17 @@ import 'utils/app_colors.dart';
 import 'theme/app_theme.dart';
 import 'services/attendance_service.dart';
 import 'services/firebase_seed_service.dart';
+import 'services/session_service.dart';
 
 // ---------- Shared / Shell Screens ----------
 import 'screens/actor_selection_view.dart';
 import 'screens/lecturer_shell.dart';
 import 'screens/student_shell.dart';
 import 'screens/login.dart';
+
+// ---------- Module 3 & 4: Academic / Financial Screens ----------
+import 'screens/manage_academic/manage_academic_screen.dart';
+import 'screens/manage_financial/manage_financial_screen.dart';
 
 // ---------- Module 2: Co-Curriculum Screens ----------
 // Adab staff screens (Pusat Adab)
@@ -63,7 +68,7 @@ class AttendanceApp extends StatelessWidget {
 
         // Lecturer route (Module 4)
         '/lecturer': (context) => LecturerShell(
-              lecturerId: 'LE210145',
+              lecturerId: AppSession.lecturerId,
               onSwitchActor: () =>
                   Navigator.pushReplacementNamed(context, '/login'),
             ),
@@ -74,6 +79,12 @@ class AttendanceApp extends StatelessWidget {
         '/create-module': (context) => const CreateModuleAdab(),
         '/claims': (context) => const ValidateClaimsScreen(),
         '/attendance': (context) => const AttendanceManagementScreen(),
+
+        // FK Staff routes (Module 3)
+        '/fkstaff/dashboard': (context) => const ManageAcademicScreen(),
+
+        // Treasury routes (Module 4)
+        '/treasury/dashboard': (context) => const ManageFinancialScreen(),
 
         // Student routes (Purple theme pages)
         '/student/dashboard': (context) => const StudentDashboard(),
