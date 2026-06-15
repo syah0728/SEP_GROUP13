@@ -83,7 +83,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     switch (result.role) {
       case 'Student':
-        await AppSession.setStudent(
+        AppSession.setStudent(
           studentId: result.id,
           studentName: result.name,
           matricId: result.matricId ?? result.id,
@@ -91,14 +91,14 @@ class _LoginScreenState extends State<LoginScreen> {
         if (!mounted) return;
         Navigator.pushReplacementNamed(context, '/student/dashboard');
       case 'Lecturer':
-        await AppSession.setLecturer(
+        AppSession.setLecturer(
           lecturerId: result.id,
           lecturerName: result.name,
         );
         if (!mounted) return;
         Navigator.pushReplacementNamed(context, '/lecturer');
       case 'Pusat Adab':
-        await AppSession.setAdab(adabId: result.id, adabName: result.name);
+        AppSession.setAdab(adabId: result.id, adabName: result.name);
         if (!mounted) return;
         Navigator.pushReplacementNamed(context, '/dashboard');
       case 'FK Staff':
