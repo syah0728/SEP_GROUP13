@@ -29,11 +29,8 @@ class _StudentPaymentHistoryPageState extends State<StudentPaymentHistoryPage> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(
-      () => context.read<FinancialController>().loadPaymentHistory(
-        widget.studentId,
-      ),
-    );
+    final ctrl = context.read<FinancialController>();
+    Future.microtask(() => ctrl.loadPaymentHistory(widget.studentId));
   }
 
   @override

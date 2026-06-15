@@ -31,11 +31,8 @@ class _StudentFinancialPageState extends State<StudentFinancialPage> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(
-      () => context.read<FinancialController>().loadStudentFinancial(
-        widget.studentId,
-      ),
-    );
+    final ctrl = context.read<FinancialController>();
+    Future.microtask(() => ctrl.loadStudentFinancial(widget.studentId));
   }
 
   @override

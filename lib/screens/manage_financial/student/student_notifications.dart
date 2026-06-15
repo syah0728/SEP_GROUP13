@@ -26,11 +26,8 @@ class _StudentNotificationsPageState extends State<StudentNotificationsPage> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(
-      () => context.read<FinancialController>().loadNotifications(
-        widget.studentId,
-      ),
-    );
+    final ctrl = context.read<FinancialController>();
+    Future.microtask(() => ctrl.loadNotifications(widget.studentId));
   }
 
   @override
