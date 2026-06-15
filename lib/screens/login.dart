@@ -30,8 +30,6 @@ class _LoginScreenState extends State<LoginScreen> {
   // Track if loading (to show spinner while logging in)
   bool _isLoading = false;
 
-  final _authService = AuthService();
-
   @override
   void initState() {
     super.initState();
@@ -48,12 +46,7 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  // Credential table: role → (username, password, route)
-  static const _credentials = {
-    'Pusat Adab': ('adab001', 'password123', '/dashboard'),
-    'Lecturer': ('lecturer001', 'lecturer123', '/lecturer'),
-    'Student': ('student001', 'student123', '/student/dashboard'),
-  };
+  final AuthService _authService = AuthService();
 
   // This function runs when user taps "Login"
   void _handleLogin() async {
@@ -114,6 +107,20 @@ class _LoginScreenState extends State<LoginScreen> {
         await AppSession.setAdab(adabId: result.id, adabName: result.name);
         if (!mounted) return;
         Navigator.pushReplacementNamed(context, '/dashboard');
+      case 'FK Staff':
+        await AppSession.setFKStaff(
+          fkStaffId: result.id,
+          fkStaffName: result.name,
+        );
+        if (!mounted) return;
+        Navigator.pushReplacementNamed(context, '/fkstaff/dashboard');
+      case 'Treasury':
+        await AppSession.setTreasury(
+          treasuryId: result.id,
+          treasuryName: result.name,
+        );
+        if (!mounted) return;
+        Navigator.pushReplacementNamed(context, '/treasury/dashboard');
     }
   }
 
@@ -200,16 +207,16 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         const SizedBox(height: 20),
 
-                        // Username field
+                        // ID field
                         const Text(
-                          'Username',
+                          'ID',
                           style: TextStyle(fontWeight: FontWeight.w500),
                         ),
                         const SizedBox(height: 6),
                         TextField(
                           controller: _usernameController,
                           decoration: InputDecoration(
-                            hintText: 'Enter username',
+                            hintText: 'Enter your ID',
                             prefixIcon: const Icon(Icons.person_outline),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
@@ -291,6 +298,14 @@ class _LoginScreenState extends State<LoginScreen> {
                             DropdownMenuItem(
                               value: 'Student',
                               child: Text('Student'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'FK Staff',
+                              child: Text('FK Staff'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'Treasury',
+                              child: Text('Treasury'),
                             ),
                           ],
                           onChanged: (value) =>

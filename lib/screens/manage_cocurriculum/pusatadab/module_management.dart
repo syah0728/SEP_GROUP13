@@ -35,8 +35,9 @@ class ModuleManagementPageState extends State<ModuleManagementPage> {
         content: Text('Are you sure you want to delete "$title"?'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             style: TextButton.styleFrom(foregroundColor: AppColors.danger),
@@ -56,8 +57,10 @@ class ModuleManagementPageState extends State<ModuleManagementPage> {
   }
 
   void editModule(ModuleModel module) {
-    Navigator.push(context,
-        MaterialPageRoute(builder: (context) => EditModulePage(module: module)));
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => EditModulePage(module: module)),
+    );
   }
 
   @override
@@ -88,15 +91,21 @@ class ModuleManagementPageState extends State<ModuleManagementPage> {
                       children: [
                         GestureDetector(
                           onTap: () => scaffoldKey.currentState?.openDrawer(),
-                          child: const Icon(Icons.menu,
-                              color: Colors.white, size: 28),
+                          child: const Icon(
+                            Icons.menu,
+                            color: Colors.white,
+                            size: 28,
+                          ),
                         ),
                         const SizedBox(width: 12),
-                        const Text("Module Management",
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold)),
+                        const Text(
+                          "Module Management",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ],
                     ),
                     const Row(
@@ -117,16 +126,23 @@ class ModuleManagementPageState extends State<ModuleManagementPage> {
                   onPressed: () => Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (context) => const CreateModuleAdab()),
+                      builder: (context) => const CreateModuleAdab(),
+                    ),
                   ).then((_) => setState(() {})),
                   icon: const Icon(Icons.add, color: Colors.white),
-                  label: const Text("Create New Module",
-                      style: TextStyle(fontWeight: FontWeight.bold)),
+                  label: const Text(
+                    "Create New Module",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     minimumSize: const Size(double.infinity, 48),
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10)),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                 ),
               ),
@@ -135,11 +151,14 @@ class ModuleManagementPageState extends State<ModuleManagementPage> {
                 padding: EdgeInsets.symmetric(horizontal: 20),
                 child: Align(
                   alignment: Alignment.centerLeft,
-                  child: Text("All Modules",
-                      style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF1E2939))),
+                  child: Text(
+                    "All Modules",
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1E2939),
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: 12),
@@ -154,8 +173,10 @@ class ModuleManagementPageState extends State<ModuleManagementPage> {
                     final modules = snapshot.data!;
                     if (modules.isEmpty) {
                       return const Center(
-                          child: Text(
-                              "No modules. Tap 'Create New Module' to add one."));
+                        child: Text(
+                          "No modules. Tap 'Create New Module' to add one.",
+                        ),
+                      );
                     }
                     return ListView.builder(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -168,50 +189,65 @@ class ModuleManagementPageState extends State<ModuleManagementPage> {
                         return Card(
                           margin: const EdgeInsets.only(bottom: 16),
                           shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10)),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                           elevation: 2,
                           child: Padding(
                             padding: const EdgeInsets.all(16),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(m.title,
-                                    style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                        color: Color(0xFF1E2939))),
+                                Text(
+                                  m.title,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF1E2939),
+                                  ),
+                                ),
                                 const SizedBox(height: 12),
                                 _row(Icons.calendar_today, m.date),
                                 const SizedBox(height: 8),
                                 _row(Icons.location_on, m.venue),
                                 const SizedBox(height: 8),
-                                _row(Icons.access_time,
-                                    "${m.startTime} - ${m.endTime}"),
+                                _row(
+                                  Icons.access_time,
+                                  "${m.startTime} - ${m.endTime}",
+                                ),
                                 const SizedBox(height: 8),
-                                _row(Icons.people,
-                                    "${m.registeredCount}/${m.maxParticipants} registered"),
+                                _row(
+                                  Icons.people,
+                                  "${m.registeredCount}/${m.maxParticipants} registered",
+                                ),
                                 const SizedBox(height: 8),
                                 // Attendance code for students
                                 Container(
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: 10, vertical: 6),
+                                    horizontal: 10,
+                                    vertical: 6,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: AppColors.primary.withAlpha(20),
                                     borderRadius: BorderRadius.circular(6),
                                     border: Border.all(
-                                        color: AppColors.primary.withAlpha(80)),
+                                      color: AppColors.primary.withAlpha(80),
+                                    ),
                                   ),
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Icon(Icons.qr_code,
-                                          size: 16, color: AppColors.primary),
+                                      Icon(
+                                        Icons.qr_code,
+                                        size: 16,
+                                        color: AppColors.primary,
+                                      ),
                                       const SizedBox(width: 6),
                                       Text(
                                         'Attendance Code: ',
                                         style: TextStyle(
-                                            fontSize: 13,
-                                            color: AppColors.primary),
+                                          fontSize: 13,
+                                          color: AppColors.primary,
+                                        ),
                                       ),
                                       Text(
                                         m.code.isNotEmpty ? m.code : '—',
@@ -248,8 +284,10 @@ class ModuleManagementPageState extends State<ModuleManagementPage> {
                                           backgroundColor: AppColors.primary,
                                           foregroundColor: Colors.white,
                                           shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(8)),
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                          ),
                                         ),
                                       ),
                                     ),
@@ -258,15 +296,21 @@ class ModuleManagementPageState extends State<ModuleManagementPage> {
                                       child: OutlinedButton.icon(
                                         onPressed: () =>
                                             deleteModule(m.id, m.title),
-                                        icon: const Icon(Icons.delete, size: 16),
+                                        icon: const Icon(
+                                          Icons.delete,
+                                          size: 16,
+                                        ),
                                         label: const Text("Delete"),
                                         style: OutlinedButton.styleFrom(
                                           foregroundColor: AppColors.danger,
                                           side: const BorderSide(
-                                              color: AppColors.danger),
+                                            color: AppColors.danger,
+                                          ),
                                           shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(8)),
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                          ),
                                         ),
                                       ),
                                     ),
@@ -293,8 +337,10 @@ class ModuleManagementPageState extends State<ModuleManagementPage> {
       children: [
         Icon(icon, size: 16, color: const Color(0xFF4A5565)),
         const SizedBox(width: 8),
-        Text(text,
-            style: const TextStyle(color: Color(0xFF4A5565), fontSize: 14)),
+        Text(
+          text,
+          style: const TextStyle(color: Color(0xFF4A5565), fontSize: 14),
+        ),
       ],
     );
   }
@@ -328,10 +374,12 @@ class EditModulePageState extends State<EditModulePage> {
     titleController = TextEditingController(text: widget.module.title);
     lecturerController = TextEditingController(text: widget.module.lecturer);
     venueController = TextEditingController(text: widget.module.venue);
-    maxController =
-        TextEditingController(text: widget.module.maxParticipants.toString());
-    registeredController =
-        TextEditingController(text: widget.module.registeredCount.toString());
+    maxController = TextEditingController(
+      text: widget.module.maxParticipants.toString(),
+    );
+    registeredController = TextEditingController(
+      text: widget.module.registeredCount.toString(),
+    );
     date = _parseDate(widget.module.date);
     startTime = _parseTime(widget.module.startTime);
     endTime = _parseTime(widget.module.endTime);
@@ -341,17 +389,28 @@ class EditModulePageState extends State<EditModulePage> {
     try {
       final p = s.split(' ');
       if (p.length == 3) {
-        return DateTime(
-            int.parse(p[2]), _monthNum(p[1]), int.parse(p[0]));
+        return DateTime(int.parse(p[2]), _monthNum(p[1]), int.parse(p[0]));
       }
     } catch (_) {}
     return DateTime.now();
   }
 
-  int _monthNum(String m) => const {
-        'Jan': 1,'Feb': 2,'Mar': 3,'Apr': 4,'May': 5,'Jun': 6,
-        'Jul': 7,'Aug': 8,'Sep': 9,'Oct': 10,'Nov': 11,'Dec': 12
-      }[m] ?? 1;
+  int _monthNum(String m) =>
+      const {
+        'Jan': 1,
+        'Feb': 2,
+        'Mar': 3,
+        'Apr': 4,
+        'May': 5,
+        'Jun': 6,
+        'Jul': 7,
+        'Aug': 8,
+        'Sep': 9,
+        'Oct': 10,
+        'Nov': 11,
+        'Dec': 12,
+      }[m] ??
+      1;
 
   TimeOfDay _parseTime(String s) {
     try {
@@ -368,9 +427,19 @@ class EditModulePageState extends State<EditModulePage> {
   }
 
   String _monthName(int m) => const [
-        "Jan","Feb","Mar","Apr","May","Jun",
-        "Jul","Aug","Sep","Oct","Nov","Dec"
-      ][m - 1];
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ][m - 1];
 
   Future<void> saveChanges() async {
     if (!formKey.currentState!.validate()) return;
@@ -389,8 +458,9 @@ class EditModulePageState extends State<EditModulePage> {
     await service.updateModule(updated);
     if (mounted) {
       setState(() => isSaving = false);
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text("Module updated")));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Module updated")));
       Navigator.pop(context);
     }
   }
@@ -434,14 +504,16 @@ class EditModulePageState extends State<EditModulePage> {
                           context: context,
                           initialDate: date,
                           firstDate: DateTime.now(),
-                          lastDate:
-                              DateTime.now().add(const Duration(days: 365)),
+                          lastDate: DateTime.now().add(
+                            const Duration(days: 365),
+                          ),
                         );
                         if (p != null) setState(() => date = p);
                       },
                       icon: const Icon(Icons.calendar_today),
                       label: Text(
-                          "${date.day} ${_monthName(date.month)} ${date.year}"),
+                        "${date.day} ${_monthName(date.month)} ${date.year}",
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -449,7 +521,9 @@ class EditModulePageState extends State<EditModulePage> {
                     child: OutlinedButton.icon(
                       onPressed: () async {
                         final p = await showTimePicker(
-                            context: context, initialTime: startTime);
+                          context: context,
+                          initialTime: startTime,
+                        );
                         if (p != null) setState(() => startTime = p);
                       },
                       icon: const Icon(Icons.access_time),
@@ -461,7 +535,9 @@ class EditModulePageState extends State<EditModulePage> {
                     child: OutlinedButton.icon(
                       onPressed: () async {
                         final p = await showTimePicker(
-                            context: context, initialTime: endTime);
+                          context: context,
+                          initialTime: endTime,
+                        );
                         if (p != null) setState(() => endTime = p);
                       },
                       icon: const Icon(Icons.access_time),
@@ -486,16 +562,18 @@ class EditModulePageState extends State<EditModulePage> {
               TextFormField(
                 controller: maxController,
                 keyboardType: TextInputType.number,
-                decoration:
-                    const InputDecoration(labelText: "Max Participants"),
+                decoration: const InputDecoration(
+                  labelText: "Max Participants",
+                ),
                 validator: (v) => v == null || v.isEmpty ? "Required" : null,
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: registeredController,
                 keyboardType: TextInputType.number,
-                decoration:
-                    const InputDecoration(labelText: "Registered Count"),
+                decoration: const InputDecoration(
+                  labelText: "Registered Count",
+                ),
                 validator: (v) => v == null || v.isEmpty ? "Required" : null,
               ),
               const SizedBox(height: 24),
@@ -507,8 +585,10 @@ class EditModulePageState extends State<EditModulePage> {
                 ),
                 child: isSaving
                     ? const CircularProgressIndicator()
-                    : const Text("Save Changes",
-                        style: TextStyle(color: Colors.white)),
+                    : const Text(
+                        "Save Changes",
+                        style: TextStyle(color: Colors.white),
+                      ),
               ),
             ],
           ),

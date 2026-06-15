@@ -14,8 +14,29 @@ class FirebaseSeedService {
 
   Future<void> seedIfNeeded() async {
     final snap = await _db.collection('registrars').limit(1).get();
-    if (snap.docs.isNotEmpty) return;
-    await _seedAll();
+    if (snap.docs.isEmpty) await _seedAll();
+    await _migrateStudentIDs();
+  }
+
+  // Migrates existing student docs: copies matricId value into studentID,
+  // then removes matricId and program fields.
+  Future<void> _migrateStudentIDs() async {
+    final snap = await _db.collection('students').get();
+    final batch = _db.batch();
+    bool dirty = false;
+    for (final doc in snap.docs) {
+      final data = doc.data();
+      final matric = (data['matricId'] ?? data['matricID']) as String?;
+      if (matric == null) continue; // already migrated
+      batch.update(doc.reference, {
+        'studentID': matric.toUpperCase(),
+        'matricId': FieldValue.delete(),
+        'matricID': FieldValue.delete(),
+        'program': FieldValue.delete(),
+      });
+      dirty = true;
+    }
+    if (dirty) await batch.commit();
   }
 
   Future<void> _seedAll() async {
@@ -184,7 +205,7 @@ class FirebaseSeedService {
         'claimID': 'CLM001',
         'studentId': 'A20CS1001',
         'studentName': 'Ahmad Faiz bin Abdullah',
-        'matricNumber': 'A20CS1001',
+        'matricNumber': 'CD21145',
         'moduleId': 'MOD001',
         'adabId': 'ADAB001',
         'submittedDate': '16/05/2026',
@@ -198,7 +219,7 @@ class FirebaseSeedService {
         'claimID': 'CLM002',
         'studentId': 'A20CS1002',
         'studentName': 'Amalin Aisyah binti Aziz',
-        'matricNumber': 'A20CS1002',
+        'matricNumber': 'CD21100',
         'moduleId': 'MOD002',
         'adabId': 'ADAB001',
         'submittedDate': '21/05/2026',
@@ -212,7 +233,7 @@ class FirebaseSeedService {
         'claimID': 'CLM003',
         'studentId': 'A20CS1003',
         'studentName': 'Adani binti Mohd Fadzil',
-        'matricNumber': 'A20CS1003',
+        'matricNumber': 'CD21079',
         'moduleId': 'MOD003',
         'adabId': 'ADAB002',
         'submittedDate': '26/05/2026',
@@ -226,7 +247,7 @@ class FirebaseSeedService {
         'claimID': 'CLM004',
         'studentId': 'A20CS1001',
         'studentName': 'Ahmad Faiz bin Abdullah',
-        'matricNumber': 'A20CS1001',
+        'matricNumber': 'CD21145',
         'moduleId': 'MOD004',
         'adabId': 'ADAB002',
         'submittedDate': '11/06/2026',

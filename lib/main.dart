@@ -16,6 +16,9 @@ import 'screens/lecturer_shell.dart';
 import 'screens/student_shell.dart';
 import 'screens/login.dart';
 
+// ---------- Module 3: Academic Screens ----------
+import 'screens/manage_academic/manage_academic_screen.dart';
+
 // ---------- Module 2: Co-Curriculum Screens ----------
 // Adab staff screens (Pusat Adab)
 import 'screens/manage_cocurriculum/pusatadab/adab_dashboard.dart';
@@ -41,12 +44,10 @@ import 'screens/manage_financial/treasury/fee_records.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initializing real Firebase config from the base code
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-  // Restore whoever was logged in before a page reload (e.g. browser back)
-  // so the sidebar/header keeps showing their identity instead of resetting
-  // to the demo defaults.
+  // Restore whoever was logged in before a page reload so the sidebar/header
+  // keeps showing their identity instead of resetting to the demo defaults.
   await AppSession.restore();
 
   // Seed functions from the base project module (Attendance/Operations)
@@ -96,6 +97,9 @@ class AttendanceApp extends StatelessWidget {
           '/claims': (context) => const ValidateClaimsScreen(),
           '/attendance': (context) => const AttendanceManagementScreen(),
 
+          // FK Staff routes — Module 3: Academic
+          '/fkstaff/dashboard': (context) => const ManageAcademicScreen(),
+
           // Student routes — Module 2: Co-Curriculum (Purple theme)
           '/student/dashboard': (context) => const StudentDashboard(),
           '/student/modules': (context) => const CoCurriculumModulesScreen(),
@@ -112,6 +116,7 @@ class AttendanceApp extends StatelessWidget {
           '/treasury/payments': (context) =>
               const TreasuryStudentPaymentsView(),
           '/treasury/records': (context) => const TreasuryFeeRecordsView(),
+          '/treasury/fee-records': (context) => const TreasuryFeeRecordsView(),
         },
       ),
     );
@@ -131,6 +136,10 @@ class AttendanceApp extends StatelessWidget {
         );
       case 'Pusat Adab':
         return const AdabDashboard();
+      case 'FK Staff':
+        return const ManageAcademicScreen();
+      case 'Treasury':
+        return const TreasuryDashboardView();
       default:
         return const LoginScreen();
     }

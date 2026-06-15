@@ -470,11 +470,10 @@ class FirebaseAttendanceService implements AttendanceService {
       'password': 'lecturer123',
     });
 
-    // Students — ERD field names
+    // Students — studentID is now the matric number (no separate matricId field)
     batch.set(_db.collection('students').doc('A20CS1001'), {
-      'studentID': 'A20CS1001',
+      'studentID': 'CD21145',
       'studentName': 'Ahmad Faiz bin Abdullah',
-      'matricId': 'CD21145',
       'programme': 'Bachelor of Computer Science (Software Engineering)',
       'semester': 'Semester 2, 2025/2026',
       'lecturerID': 'LE210145',
@@ -482,9 +481,8 @@ class FirebaseAttendanceService implements AttendanceService {
       'password': 'student123',
     });
     batch.set(_db.collection('students').doc('A20CS1002'), {
-      'studentID': 'A20CS1002',
+      'studentID': 'CD21100',
       'studentName': 'Amalin Aisyah binti Aziz',
-      'matricId': 'CD21100',
       'programme': 'Bachelor of Computer Science (Software Engineering)',
       'semester': 'Semester 2, 2025/2026',
       'lecturerID': 'LE210145',
@@ -492,9 +490,8 @@ class FirebaseAttendanceService implements AttendanceService {
       'password': 'student123',
     });
     batch.set(_db.collection('students').doc('A20CS1003'), {
-      'studentID': 'A20CS1003',
+      'studentID': 'CD21079',
       'studentName': 'Adani binti Mohd Fadzil',
-      'matricId': 'CD21079',
       'programme': 'Bachelor of Computer Science (Software Engineering)',
       'semester': 'Semester 2, 2025/2026',
       'lecturerID': 'LE210145',
@@ -502,9 +499,8 @@ class FirebaseAttendanceService implements AttendanceService {
       'password': 'student123',
     });
     batch.set(_db.collection('students').doc('A20CS1004'), {
-      'studentID': 'A20CS1004',
+      'studentID': 'CD210145',
       'studentName': 'Ahmad Imran',
-      'matricId': 'CD210145',
       'programme': 'Bachelor of Computer Science (Software Engineering)',
       'semester': 'Semester 2, 2025/2026',
       'lecturerID': 'LE210145',

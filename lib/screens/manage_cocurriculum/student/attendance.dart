@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../../services/firebase_services.dart';
+import '../../../services/session_service.dart';
 import '../../../widgets/std_sidebar.dart';
 
 class AttendanceCheckIn extends StatefulWidget {
@@ -13,11 +14,6 @@ class AttendanceCheckIn extends StatefulWidget {
 class AttendanceCheckInState extends State<AttendanceCheckIn> {
   final TextEditingController codeController = TextEditingController();
   final FirebaseService _service = FirebaseService();
-
-  // Hardcoded student identity — matches seed data in FirebaseService
-  static const String _studentName = 'Ahmad Imran';
-  static const String _matricNumber = 'CD210145';
-  static const String _programme = 'BCS';
 
   final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey();
 
@@ -80,9 +76,9 @@ class AttendanceCheckInState extends State<AttendanceCheckIn> {
     if (activeTab == 'activities') {
       final result = await _service.submitActivityAttendance(
         code: codeController.text,
-        studentName: _studentName,
-        matricNumber: _matricNumber,
-        programme: _programme,
+        studentName: AppSession.studentName,
+        matricNumber: AppSession.matricId,
+        programme: '',
       );
       setState(() {
         isCheckingIn = false;
@@ -141,8 +137,8 @@ class AttendanceCheckInState extends State<AttendanceCheckIn> {
       key: scaffoldKey,
       drawer: StudentSidebar(
         activePage: 'checkin',
-        studentName: 'Ahmad Imran',
-        matricNumber: 'CD210145',
+        studentName: AppSession.studentName,
+        matricNumber: AppSession.matricId,
         onLogout: () => Navigator.pushNamedAndRemoveUntil(
             context, '/login', (route) => false),
       ),
