@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../controllers/manage_attendance/student_attendance_controller.dart';
+import '../../../services/session_service.dart';
 import '../../../widgets/std_sidebar.dart';
 import '../../manage_attendance/student/submit_attendance.dart';
 
@@ -20,7 +21,7 @@ class _StudentCheckinPageState extends State<StudentCheckinPage> {
   @override
   void initState() {
     super.initState();
-    _controller = StudentAttendanceController(studentId: 'A20CS1001');
+    _controller = StudentAttendanceController(studentId: AppSession.studentId);
     _controller.addListener(_onControllerChanged);
     _bootstrap();
   }
@@ -47,8 +48,8 @@ class _StudentCheckinPageState extends State<StudentCheckinPage> {
 
   Widget _sidebar() => StudentSidebar(
         activePage: 'checkin',
-        studentName: 'Ahmad Imran',
-        matricNumber: 'CD210145',
+        studentName: AppSession.studentName,
+        matricNumber: AppSession.matricId,
         onLogout: () => Navigator.pushNamedAndRemoveUntil(
             context, '/login', (route) => false),
       );

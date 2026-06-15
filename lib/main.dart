@@ -7,6 +7,7 @@ import 'utils/app_colors.dart';
 import 'theme/app_theme.dart';
 import 'services/attendance_service.dart';
 import 'services/firebase_seed_service.dart';
+import 'services/session_service.dart';
 
 // ---------- Shared / Shell Screens ----------
 import 'screens/actor_selection_view.dart';
@@ -63,7 +64,7 @@ class AttendanceApp extends StatelessWidget {
 
         // Lecturer route (Module 4)
         '/lecturer': (context) => LecturerShell(
-              lecturerId: 'LE210145',
+              lecturerId: AppSession.lecturerId,
               onSwitchActor: () =>
                   Navigator.pushReplacementNamed(context, '/login'),
             ),

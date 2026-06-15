@@ -2,6 +2,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../widgets/std_sidebar.dart';
 import '../../../services/firebase_services.dart';
+import '../../../services/session_service.dart';
 
 class ClaimCreditScreen extends StatefulWidget {
   const ClaimCreditScreen({super.key});
@@ -14,8 +15,8 @@ class ClaimCreditScreenState extends State<ClaimCreditScreen> {
   final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey();
   final FirebaseService service = FirebaseService();
 
-  final String studentName = "Ahmad Imran";
-  final String matricNumber = "CD210145";
+  String get studentName => AppSession.studentName;
+  String get matricNumber => AppSession.matricId;
 
   static const Color purplePrimary = Color(0xFFAB43FE);
   static const int requiredPoints = 8;

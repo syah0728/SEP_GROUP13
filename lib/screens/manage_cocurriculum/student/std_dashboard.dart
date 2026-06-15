@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../services/session_service.dart';
 import '../../../widgets/module_card.dart';
 import '../../../widgets/std_sidebar.dart';
 
@@ -15,8 +16,8 @@ class _StudentDashboardState extends State<StudentDashboard> {
   static const Color purplePrimary = Color(0xFFAB43FE);
   static const Color purpleDark = Color(0xFF8B2FD9);
 
-  final String studentName = 'Ahmad Imran bin Abdullah';
-  final String matricNumber = 'CD210145';
+  String get studentName => AppSession.studentName;
+  String get matricNumber => AppSession.matricId;
 
   final List<Map<String, dynamic>> attendedActivities = const [
     {'name': 'Blood Donation Campaign', 'date': '5 Mar 2026', 'cats': 2, 'claimed': true},
