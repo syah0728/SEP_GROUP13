@@ -2,10 +2,11 @@
 // This is the FIRST screen users see.
 // It has: username, password, role dropdown, login button.
 // Design matches your Figma: blue gradient background, white card.
-// For simplicity: we use hardcoded credentials (adab001 / password123).
-// You can later connect this to Firebase Authentication.
+// Credentials are validated against Firestore (students/lecturers/adabStaff).
 
 import 'package:flutter/material.dart';
+import '../services/auth_service.dart';
+import '../services/session_service.dart';
 import '../utils/app_colors.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -37,12 +38,7 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  // Credential table: role → (username, password, route)
-  static const _credentials = {
-    'Pusat Adab': ('adab001', 'password123', '/dashboard'),
-    'Lecturer': ('lecturer001', 'lecturer123', '/lecturer'),
-    'Student': ('student001', 'student123', '/student/dashboard'),
-  };
+  final AuthService _authService = AuthService();
 
   // This function runs when user taps "Login"
   void _handleLogin() async {
@@ -56,31 +52,41 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    final cred = _credentials[_selectedRole];
-    if (cred == null) return;
+    setState(() => _isLoading = true);
 
-    final (expectedUser, expectedPass, route) = cred;
+    final result = await _authService.login(
+      role: _selectedRole,
+      username: username,
+      password: password,
+    );
 
-    if (username == expectedUser && password == expectedPass) {
-      setState(() => _isLoading = true);
-      await Future.delayed(const Duration(milliseconds: 600));
-      if (mounted) {
-        setState(() => _isLoading = false);
-        Navigator.pushReplacementNamed(context, route);
-      }
-    } else {
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+
+    if (result == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            _selectedRole == 'Pusat Adab'
-                ? 'Try: adab001 / password123'
-                : _selectedRole == 'Lecturer'
-                    ? 'Try: lecturer001 / lecturer123'
-                    : 'Try: student001 / student123',
-          ),
+        const SnackBar(
+          content: Text('Invalid username or password for the selected role.'),
           backgroundColor: Colors.red,
         ),
       );
+      return;
+    }
+
+    switch (result.role) {
+      case 'Student':
+        AppSession.setStudent(
+          studentId: result.id,
+          studentName: result.name,
+          matricId: result.matricId ?? result.id,
+        );
+        Navigator.pushReplacementNamed(context, '/student/dashboard');
+      case 'Lecturer':
+        AppSession.setLecturer(lecturerId: result.id, lecturerName: result.name);
+        Navigator.pushReplacementNamed(context, '/lecturer');
+      case 'Pusat Adab':
+        AppSession.setAdab(adabId: result.id, adabName: result.name);
+        Navigator.pushReplacementNamed(context, '/dashboard');
     }
   }
 
@@ -148,7 +154,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
+                          color: Colors.black.withValues(alpha: 0.1),
                           blurRadius: 20,
                           offset: const Offset(0, 10),
                         ),
@@ -168,8 +174,10 @@ class _LoginScreenState extends State<LoginScreen> {
                         const SizedBox(height: 20),
 
                         // Username field
-                        const Text('Username',
-                            style: TextStyle(fontWeight: FontWeight.w500)),
+                        const Text(
+                          'Username',
+                          style: TextStyle(fontWeight: FontWeight.w500),
+                        ),
                         const SizedBox(height: 6),
                         TextField(
                           controller: _usernameController,
@@ -178,18 +186,23 @@ class _LoginScreenState extends State<LoginScreen> {
                             prefixIcon: const Icon(Icons.person_outline),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
-                              borderSide:
-                                  const BorderSide(color: AppColors.border),
+                              borderSide: const BorderSide(
+                                color: AppColors.border,
+                              ),
                             ),
                             contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 14),
+                              horizontal: 12,
+                              vertical: 14,
+                            ),
                           ),
                         ),
                         const SizedBox(height: 16),
 
                         // Password field
-                        const Text('Password',
-                            style: TextStyle(fontWeight: FontWeight.w500)),
+                        const Text(
+                          'Password',
+                          style: TextStyle(fontWeight: FontWeight.w500),
+                        ),
                         const SizedBox(height: 6),
                         TextField(
                           controller: _passwordController,
@@ -200,25 +213,33 @@ class _LoginScreenState extends State<LoginScreen> {
                             // Eye icon to toggle password visibility
                             suffixIcon: GestureDetector(
                               onTap: () => setState(
-                                  () => _passwordHidden = !_passwordHidden),
-                              child: Icon(_passwordHidden
-                                  ? Icons.visibility_off
-                                  : Icons.visibility),
+                                () => _passwordHidden = !_passwordHidden,
+                              ),
+                              child: Icon(
+                                _passwordHidden
+                                    ? Icons.visibility_off
+                                    : Icons.visibility,
+                              ),
                             ),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
-                              borderSide:
-                                  const BorderSide(color: AppColors.border),
+                              borderSide: const BorderSide(
+                                color: AppColors.border,
+                              ),
                             ),
                             contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 14),
+                              horizontal: 12,
+                              vertical: 14,
+                            ),
                           ),
                         ),
                         const SizedBox(height: 16),
 
                         // Role dropdown
-                        const Text('Role',
-                            style: TextStyle(fontWeight: FontWeight.w500)),
+                        const Text(
+                          'Role',
+                          style: TextStyle(fontWeight: FontWeight.w500),
+                        ),
                         const SizedBox(height: 6),
                         DropdownButtonFormField<String>(
                           initialValue: _selectedRole,
@@ -227,15 +248,23 @@ class _LoginScreenState extends State<LoginScreen> {
                               borderRadius: BorderRadius.circular(8),
                             ),
                             contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 14),
+                              horizontal: 12,
+                              vertical: 14,
+                            ),
                           ),
                           items: const [
                             DropdownMenuItem(
-                                value: 'Pusat Adab', child: Text('Pusat Adab')),
+                              value: 'Pusat Adab',
+                              child: Text('Pusat Adab'),
+                            ),
                             DropdownMenuItem(
-                                value: 'Lecturer', child: Text('Lecturer')),
+                              value: 'Lecturer',
+                              child: Text('Lecturer'),
+                            ),
                             DropdownMenuItem(
-                                value: 'Student', child: Text('Student')),
+                              value: 'Student',
+                              child: Text('Student'),
+                            ),
                           ],
                           onChanged: (value) =>
                               setState(() => _selectedRole = value!),
@@ -265,13 +294,17 @@ class _LoginScreenState extends State<LoginScreen> {
                                     width: 16,
                                     height: 16,
                                     child: CircularProgressIndicator(
-                                        strokeWidth: 2, color: Colors.white),
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
                                   )
                                 : const Icon(Icons.login, color: Colors.white),
                             label: Text(
                               _isLoading ? 'Logging in...' : 'Login',
                               style: const TextStyle(
-                                  color: Colors.white, fontSize: 16),
+                                color: Colors.white,
+                                fontSize: 16,
+                              ),
                             ),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF1A56DB),
