@@ -13,6 +13,10 @@ dependencies:
 
   # UI & State Management
   google_fonts: ^6.2.1
+  provider: ^6.1.2
+  intl: ^0.19.0
+  pdf: ^3.11.1
+  printing: ^5.13.1
 
   # Firebase
   firebase_core: ^3.0.0

@@ -73,8 +73,14 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (result == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Invalid username or password for the selected role.'),
+        SnackBar(
+          content: Text(
+            _selectedRole == 'Pusat Adab'
+                ? 'Try: adab001 / password123'
+                : _selectedRole == 'Lecturer'
+                ? 'Try: lecturer001 / lecturer123'
+                : 'Try: student001 / student123',
+          ),
           backgroundColor: Colors.red,
         ),
       );
