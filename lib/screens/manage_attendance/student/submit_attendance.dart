@@ -1230,11 +1230,13 @@ class StudentClassDetailsView extends StatelessWidget {
             right: 20,
             bottom: 20,
             child: PurpleButton(
-              label: controller.showSuccess ? 'Done' : 'Confirm Attendance',
+              label: (controller.showSuccess || controller.showAlreadySubmitted)
+                  ? 'Done'
+                  : 'Confirm Attendance',
               isLoading: controller.isSubmitting,
               onPressed: controller.isSubmitting
                   ? null
-                  : (controller.showSuccess
+                  : ((controller.showSuccess || controller.showAlreadySubmitted)
                         ? controller.backToDashboard
                         : controller.confirmAttendance),
             ),

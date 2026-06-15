@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import '../../../services/firebase_services.dart';
+import '../../../services/session_service.dart';
 import '../../../models/manage_cocurriculum/module.dart';
 import '../../../widgets/std_sidebar.dart';
 
@@ -14,8 +15,8 @@ class CoCurriculumModulesScreen extends StatefulWidget {
 class CoCurriculumModulesScreenState extends State<CoCurriculumModulesScreen> {
   final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey();
   final FirebaseService service = FirebaseService();
-  final String studentName = "Ahmad Imran";
-  final String matricNumber = "CD210145";
+  String get studentName => AppSession.studentName;
+  String get matricNumber => AppSession.matricId;
 
   // Studentâ€™s registered & attended modules (demo data)
   final Set<String> registeredModuleIds = {"Kayak", "3D Printing"};

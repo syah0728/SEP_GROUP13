@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../services/session_service.dart';
 import '../../utils/app_colors.dart';
 
 class AdabSidebar extends StatelessWidget {
@@ -48,7 +49,7 @@ class AdabSidebar extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Nurul Aisyah',
+                        AppSession.adabName,
                         style: GoogleFonts.inter(
                           color: Colors.white,
                           fontSize: 18,
@@ -58,7 +59,7 @@ class AdabSidebar extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'ADAB001',
+                        AppSession.adabId,
                         style: GoogleFonts.inter(
                           color: const Color(0xFFDBEAFE),
                           fontSize: 14,

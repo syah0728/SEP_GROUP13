@@ -91,6 +91,10 @@ class GpsService {
           message:
               'You are not within the allowed classroom area '
               '(${distance.toStringAsFixed(0)}m away, max ${maxDistanceMeters.toStringAsFixed(0)}m). '
+              'Your location: ${position.latitude.toStringAsFixed(6)}, '
+              '${position.longitude.toStringAsFixed(6)}. '
+              'Required: ${requiredLatitude.toStringAsFixed(6)}, '
+              '${requiredLongitude.toStringAsFixed(6)}. '
               'Please go to the classroom.',
         );
       }
