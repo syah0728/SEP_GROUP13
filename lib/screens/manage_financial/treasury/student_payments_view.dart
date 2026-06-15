@@ -9,7 +9,8 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../../controllers/manage_financial/financial_controller.dart';
 import '../../../models/manage_financial/financial_model.dart';
-import '../../../widgets/app_drawer.dart';
+import '../../../widgets/treasury_drawer.dart';
+import '../../../services/session_service.dart';
 import 'student_detail_view.dart';
 
 // ── Figma colours ─────────────────────────────────────────────
@@ -112,7 +113,13 @@ class _TreasuryStudentPaymentsViewState
           ),
         ],
       ),
-      drawer: const AppDrawer(role: 'treasury'),
+      drawer: TreasuryDrawer(
+        activePage: 'payments',
+        onLogout: () {
+          AppSession.clear();
+          Navigator.pushReplacementNamed(context, '/login');
+        },
+      ),
 
       body: Column(
         children: [

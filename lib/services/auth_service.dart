@@ -47,19 +47,25 @@ class AuthService {
   }
 
   Future<LoginResult?> _loginStudent(String username, String password) async {
+    final normalised = username.toUpperCase();
+    String? docId;
     Map<String, dynamic>? data;
 
-    final byId = await _db.collection('students').doc(username).get();
-    if (byId.exists) {
-      data = byId.data();
+    // Primary: studentID field holds the matric number (e.g. CD21100)
+    final byStudentId = await _db
+        .collection('students')
+        .where('studentID', isEqualTo: normalised)
+        .limit(1)
+        .get();
+    if (byStudentId.docs.isNotEmpty) {
+      docId = byStudentId.docs.first.id; // internal doc ID, e.g. A20CS1002
+      data = byStudentId.docs.first.data();
     } else {
-      final byMatric = await _db
-          .collection('students')
-          .where('matricId', isEqualTo: username)
-          .limit(1)
-          .get();
-      if (byMatric.docs.isNotEmpty) {
-        data = byMatric.docs.first.data();
+      // Fallback: old doc-ID lookup (A20CS1001) for unmigrated data
+      final byDocId = await _db.collection('students').doc(normalised).get();
+      if (byDocId.exists) {
+        docId = byDocId.id;
+        data = byDocId.data();
       }
     }
 
@@ -67,14 +73,14 @@ class AuthService {
 
     return LoginResult(
       role: 'Student',
-      id: (data['studentID'] ?? data['studentId']) as String,
+      id: docId!, // internal doc ID used for all Firestore lookups
       name: (data['studentName'] ?? data['name']) as String,
-      matricId: (data['matricId'] ?? data['matricID']) as String?,
+      matricId: data['studentID'] as String?, // matric number shown in UI
     );
   }
 
   Future<LoginResult?> _loginLecturer(String username, String password) async {
-    final doc = await _db.collection('lecturers').doc(username).get();
+    final doc = await _db.collection('lecturers').doc(username.toUpperCase()).get();
     final data = doc.data();
     if (data == null || data['password'] != password) return null;
 
@@ -86,9 +92,10 @@ class AuthService {
   }
 
   Future<LoginResult?> _loginAdabStaff(String username, String password) async {
+    // Login by adabID field (e.g. ADAB001)
     final snap = await _db
         .collection('adabStaff')
-        .where('username', isEqualTo: username)
+        .where('adabID', isEqualTo: username.toUpperCase())
         .limit(1)
         .get();
     if (snap.docs.isEmpty) return null;
@@ -104,9 +111,10 @@ class AuthService {
   }
 
   Future<LoginResult?> _loginFKStaff(String username, String password) async {
+    // Login by staffID field (e.g. REG001)
     final snap = await _db
         .collection('registrars')
-        .where('username', isEqualTo: username)
+        .where('staffID', isEqualTo: username.toUpperCase())
         .limit(1)
         .get();
     if (snap.docs.isEmpty) return null;
@@ -122,9 +130,10 @@ class AuthService {
   }
 
   Future<LoginResult?> _loginTreasury(String username, String password) async {
+    // Login by treasuryID field (e.g. TRES001)
     final snap = await _db
         .collection('treasury')
-        .where('username', isEqualTo: username)
+        .where('treasuryID', isEqualTo: username.toUpperCase())
         .limit(1)
         .get();
     if (snap.docs.isEmpty) return null;

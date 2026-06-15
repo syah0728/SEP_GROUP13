@@ -106,7 +106,10 @@ class _LoginScreenState extends State<LoginScreen> {
         if (!mounted) return;
         Navigator.pushReplacementNamed(context, '/fkstaff/dashboard');
       case 'Treasury':
-        AppSession.setTreasury(treasuryId: result.id, treasuryName: result.name);
+        AppSession.setTreasury(
+          treasuryId: result.id,
+          treasuryName: result.name,
+        );
         if (!mounted) return;
         Navigator.pushReplacementNamed(context, '/treasury/dashboard');
     }
@@ -195,16 +198,16 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         const SizedBox(height: 20),
 
-                        // Username field
+                        // ID field
                         const Text(
-                          'Username',
+                          'ID',
                           style: TextStyle(fontWeight: FontWeight.w500),
                         ),
                         const SizedBox(height: 6),
                         TextField(
                           controller: _usernameController,
                           decoration: InputDecoration(
-                            hintText: 'Enter username',
+                            hintText: 'Enter your ID',
                             prefixIcon: const Icon(Icons.person_outline),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),

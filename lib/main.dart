@@ -16,8 +16,12 @@ import 'screens/student_shell.dart';
 import 'screens/login.dart';
 
 // ---------- Module 3 & 4: Academic / Financial Screens ----------
+import 'package:provider/provider.dart';
 import 'screens/manage_academic/manage_academic_screen.dart';
-import 'screens/manage_financial/manage_financial_screen.dart';
+import 'screens/manage_financial/treasury/treasury_dashboard.dart';
+import 'screens/manage_financial/treasury/student_payments_view.dart';
+import 'screens/manage_financial/treasury/fee_records.dart';
+import 'controllers/manage_financial/financial_controller.dart';
 
 // ---------- Module 2: Co-Curriculum Screens ----------
 // Adab staff screens (Pusat Adab)
@@ -68,10 +72,10 @@ class AttendanceApp extends StatelessWidget {
 
         // Lecturer route (Module 4)
         '/lecturer': (context) => LecturerShell(
-              lecturerId: AppSession.lecturerId,
-              onSwitchActor: () =>
-                  Navigator.pushReplacementNamed(context, '/login'),
-            ),
+          lecturerId: AppSession.lecturerId,
+          onSwitchActor: () =>
+              Navigator.pushReplacementNamed(context, '/login'),
+        ),
 
         // Adab staff routes (Orange theme pages)
         '/dashboard': (context) => const AdabDashboard(),
@@ -84,7 +88,18 @@ class AttendanceApp extends StatelessWidget {
         '/fkstaff/dashboard': (context) => const ManageAcademicScreen(),
 
         // Treasury routes (Module 4)
-        '/treasury/dashboard': (context) => const ManageFinancialScreen(),
+        '/treasury/dashboard': (context) => ChangeNotifierProvider(
+              create: (_) => FinancialController(),
+              child: const TreasuryDashboardView(),
+            ),
+        '/treasury/payments': (context) => ChangeNotifierProvider(
+              create: (_) => FinancialController(),
+              child: const TreasuryStudentPaymentsView(),
+            ),
+        '/treasury/fee-records': (context) => ChangeNotifierProvider(
+              create: (_) => FinancialController(),
+              child: const TreasuryFeeRecordsView(),
+            ),
 
         // Student routes (Purple theme pages)
         '/student/dashboard': (context) => const StudentDashboard(),

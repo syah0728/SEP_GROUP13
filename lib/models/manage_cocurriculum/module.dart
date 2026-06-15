@@ -37,7 +37,7 @@ class ModuleModel {
       date: data['date'] ?? '',
       startTime: data['startTime'] ?? '8:00 AM',
       endTime: data['endTime'] ?? '4:00 PM',
-      lecturerId: data['lecturerId'] ?? '',
+      lecturerId: data['lecturerId'] ?? data['lecturerID'] ?? '',
       lecturer: data['lecturer'] ?? '',
       venue: data['venue'] ?? '',
       maxParticipants: data['maxParticipants'] ?? 50,

@@ -9,7 +9,8 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../../controllers/manage_financial/financial_controller.dart';
 import '../../../models/manage_financial/financial_model.dart';
-import '../../../widgets/app_drawer.dart';
+import '../../../widgets/treasury_drawer.dart';
+import '../../../services/session_service.dart';
 
 // ── Colours ───────────────────────────────────────────────────
 const _kTeal       = Color(0xFF45C5C3);
@@ -101,7 +102,13 @@ class _TreasuryFeeRecordsViewState extends State<TreasuryFeeRecordsView> {
           ),
         ],
       ),
-      drawer: const AppDrawer(role: 'treasury'),
+      drawer: TreasuryDrawer(
+        activePage: 'fee-records',
+        onLogout: () {
+          AppSession.clear();
+          Navigator.pushReplacementNamed(context, '/login');
+        },
+      ),
 
       body: ctrl.isLoading
           ? const Center(child: CircularProgressIndicator(color: _kTeal))

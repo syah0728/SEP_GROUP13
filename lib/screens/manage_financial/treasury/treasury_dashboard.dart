@@ -7,7 +7,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../controllers/manage_financial/financial_controller.dart';
-import '../../../widgets/app_drawer.dart';
+import '../../../widgets/treasury_drawer.dart';
+import '../../../services/session_service.dart';
 import 'student_payments_view.dart';
 import 'fee_records.dart';
 
@@ -93,7 +94,13 @@ class _TreasuryDashboardViewState extends State<TreasuryDashboardView> {
           ),
         ],
       ),
-      drawer: const AppDrawer(role: 'treasury'),
+      drawer: TreasuryDrawer(
+        activePage: 'dashboard',
+        onLogout: () {
+          AppSession.clear();
+          Navigator.pushReplacementNamed(context, '/login');
+        },
+      ),
 
       body: ctrl.isLoading
           ? const Center(child: CircularProgressIndicator(color: _kTeal))
