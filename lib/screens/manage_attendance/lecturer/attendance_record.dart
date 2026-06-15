@@ -143,7 +143,7 @@ class _AttendanceRecordSelectionViewState
           ),
           const SizedBox(height: 24),
           PrimaryButton(
-            label: 'View Records',
+            label: 'Select Class',
             onPressed: () {
               widget.controller.setRecordSelection(
                 course: selectedCourse,

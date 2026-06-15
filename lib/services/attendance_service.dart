@@ -149,21 +149,68 @@ class FirebaseAttendanceService implements AttendanceService {
       'longitude': session.location.longitude,
     };
 
-    final ref = await _db.collection('attendanceSessions').add(sessionData);
+    // Reuse the existing session doc for this course/section/date/time (if
+    // one was generated before) instead of creating a duplicate, so
+    // attendanceRecords stay tied to a single sessionId across regenerates.
+    final sessionId = await _findOrCreateSessionId(
+      course: course,
+      session: session,
+      sessionData: sessionData,
+    );
+
     await _createAbsentRecordsForSession(
-      sessionId: ref.id,
+      sessionId: sessionId,
       course: course,
       session: session,
     );
 
     return AttendanceSession(
-      sessionId: ref.id,
+      sessionId: sessionId,
       course: course,
       session: session,
       code: code,
       generatedAt: DateTime.now(),
       qrSeed: qrSeed,
     );
+  }
+
+  Future<String> _findOrCreateSessionId({
+    required Course course,
+    required SessionOption session,
+    required Map<String, dynamic> sessionData,
+  }) async {
+    // Try ERD field name first, fallback to old field name
+    var snap = await _db
+        .collection('attendanceSessions')
+        .where('courseID', isEqualTo: course.courseCode)
+        .where('section', isEqualTo: session.section)
+        .where('date', isEqualTo: session.date)
+        .where('timeLabel', isEqualTo: session.timeLabel)
+        .limit(1)
+        .get();
+
+    if (snap.docs.isEmpty) {
+      snap = await _db
+          .collection('attendanceSessions')
+          .where('courseCode', isEqualTo: course.courseCode)
+          .where('section', isEqualTo: session.section)
+          .where('date', isEqualTo: session.date)
+          .where('timeLabel', isEqualTo: session.timeLabel)
+          .limit(1)
+          .get();
+    }
+
+    if (snap.docs.isNotEmpty) {
+      final id = snap.docs.first.id;
+      await _db
+          .collection('attendanceSessions')
+          .doc(id)
+          .set(sessionData, SetOptions(merge: true));
+      return id;
+    }
+
+    final ref = await _db.collection('attendanceSessions').add(sessionData);
+    return ref.id;
   }
 
   Future<void> _createAbsentRecordsForSession({
@@ -184,10 +231,22 @@ class FirebaseAttendanceService implements AttendanceService {
           .get();
     }
 
+    // Skip students who already have a record for this session (e.g. when
+    // the lecturer regenerates the code) so their existing status isn't
+    // reset back to absent.
+    final existingSnap = await _db
+        .collection('attendanceRecords')
+        .where('sessionID', isEqualTo: sessionId)
+        .get();
+    final existingIds = existingSnap.docs.map((d) => d.id).toSet();
+
     final batch = _db.batch();
     for (final enroll in enrollSnap.docs) {
       final data = enroll.data() as Map<String, dynamic>;
       final studentId = data['studentID'] ?? data['studentId'] ?? '';
+
+      final recordId = '${sessionId}_$studentId';
+      if (existingIds.contains(recordId)) continue;
 
       // Get name and matricId from enrollment, fallback to students collection
       String studentName = data['studentName'] ?? '';
@@ -204,7 +263,6 @@ class FirebaseAttendanceService implements AttendanceService {
         }
       }
 
-      final recordId = '${sessionId}_$studentId';
       final ref = _db.collection('attendanceRecords').doc(recordId);
       batch.set(ref, {
         'sessionID': sessionId,

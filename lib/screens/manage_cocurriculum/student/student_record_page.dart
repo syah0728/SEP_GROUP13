@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../../controllers/manage_attendance/student_attendance_controller.dart';
+import '../../../widgets/std_sidebar.dart';
 import '../../manage_attendance/student/view_attendance.dart';
 
 /// Adapter that wires the Module-3 attendance record flow into the
-/// Module-2 student route (/student/record). Back-navigation on the
-/// subject list returns to /student/dashboard.
+/// Module-2 student route (/student/record). The subject list uses the
+/// shared student sidebar; selecting a subject shows its attendance detail.
 class StudentRecordPage extends StatefulWidget {
   const StudentRecordPage({super.key});
 
@@ -14,6 +15,7 @@ class StudentRecordPage extends StatefulWidget {
 
 class _StudentRecordPageState extends State<StudentRecordPage> {
   late final StudentAttendanceController _controller;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey();
   bool _initialized = false;
 
   @override
@@ -44,6 +46,14 @@ class _StudentRecordPageState extends State<StudentRecordPage> {
     super.dispose();
   }
 
+  Widget _sidebar() => StudentSidebar(
+        activePage: 'record',
+        studentName: 'Ahmad Imran',
+        matricNumber: 'CD210145',
+        onLogout: () => Navigator.pushNamedAndRemoveUntil(
+            context, '/login', (route) => false),
+      );
+
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
@@ -52,7 +62,11 @@ class _StudentRecordPageState extends State<StudentRecordPage> {
         if (_controller.activeScreen == StudentScreen.courseAttendance) {
           return StudentCourseAttendanceView(controller: _controller);
         }
-        return StudentAttendanceRecordView(controller: _controller);
+        return StudentAttendanceRecordView(
+          controller: _controller,
+          scaffoldKey: _scaffoldKey,
+          drawer: _sidebar(),
+        );
       },
     );
   }

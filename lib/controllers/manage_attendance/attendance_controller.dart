@@ -154,6 +154,13 @@ class AttendanceController extends ChangeNotifier {
     required String recordId,
     required AttendanceStatus status,
   }) async {
+    // Validate attendance data: record must belong to the loaded session
+    // and the status must actually change.
+    final index = attendanceRecords.indexWhere((r) => r.recordId == recordId);
+    if (index == -1 || attendanceRecords[index].status == status) {
+      return;
+    }
+
     try {
       await _service.updateAttendanceRecord(recordId: recordId, status: status);
       attendanceRecords = attendanceRecords.map((r) {

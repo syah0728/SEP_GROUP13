@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 
 import '../models/manage_attendance/attendance_models.dart';
@@ -41,31 +44,29 @@ class GpsService {
     required double requiredLongitude,
     required double maxDistanceMeters,
   }) async {
+    const locationServicesHint =
+        'Please make sure Location/GPS is turned on for this device and '
+        'browser, then try again.';
+
     try {
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         return (
           isAllowed: false,
-          message: 'Location access denied. Please enable GPS.',
+          message: 'Location services are turned off. $locationServicesHint',
         );
       }
 
       var permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          return (
-            isAllowed: false,
-            message: 'Location access denied. Please enable GPS.',
-          );
-        }
       }
 
-      if (permission == LocationPermission.deniedForever) {
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
         return (
           isAllowed: false,
-          message:
-              'Location access permanently denied. Please enable in device settings.',
+          message: 'Location permission was not granted. $locationServicesHint',
         );
       }
 
@@ -73,8 +74,8 @@ class GpsService {
           await Geolocator.getCurrentPosition(
             desiredAccuracy: LocationAccuracy.high,
           ).timeout(
-            const Duration(seconds: 15),
-            onTimeout: () => throw Exception('GPS timeout'),
+            const Duration(seconds: 20),
+            onTimeout: () => throw TimeoutException('GPS timeout'),
           );
 
       final distance = Geolocator.distanceBetween(
@@ -88,15 +89,36 @@ class GpsService {
         return (
           isAllowed: false,
           message:
-              'You are not within the allowed classroom area. Please go to the classroom.',
+              'You are not within the allowed classroom area '
+              '(${distance.toStringAsFixed(0)}m away, max ${maxDistanceMeters.toStringAsFixed(0)}m). '
+              'Please go to the classroom.',
         );
       }
 
       return (isAllowed: true, message: 'GPS verified.');
-    } catch (_) {
+    } on TimeoutException catch (e) {
+      debugPrint('GpsService: timed out getting location: $e');
       return (
         isAllowed: false,
-        message: 'Failed to get location. Please try again.',
+        message: 'Could not get your location in time. $locationServicesHint',
+      );
+    } on LocationServiceDisabledException catch (e) {
+      debugPrint('GpsService: location service disabled: $e');
+      return (
+        isAllowed: false,
+        message: 'Location services are turned off. $locationServicesHint',
+      );
+    } on PermissionDeniedException catch (e) {
+      debugPrint('GpsService: permission denied: $e');
+      return (
+        isAllowed: false,
+        message: 'Location permission was not granted. $locationServicesHint',
+      );
+    } catch (e) {
+      debugPrint('GpsService: failed to get location: $e');
+      return (
+        isAllowed: false,
+        message: 'Failed to get location. $locationServicesHint',
       );
     }
   }

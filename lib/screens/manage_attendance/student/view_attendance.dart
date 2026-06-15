@@ -7,15 +7,24 @@ import 'submit_attendance.dart';
 // ── Student Attendance Record View (Subject List) ─────────────────────────────
 
 class StudentAttendanceRecordView extends StatelessWidget {
-  const StudentAttendanceRecordView({super.key, required this.controller});
+  const StudentAttendanceRecordView({
+    super.key,
+    required this.controller,
+    this.scaffoldKey,
+    this.drawer,
+  });
   final StudentAttendanceController controller;
+  final GlobalKey<ScaffoldState>? scaffoldKey;
+  final Widget? drawer;
 
   @override
   Widget build(BuildContext context) {
     return StudentPageScaffold(
       title: 'Attendance Record',
       onMenuTap: controller.backToDashboard,
-      showBack: true,
+      showBack: drawer == null,
+      scaffoldKey: scaffoldKey,
+      drawer: drawer,
       child: controller.isLoading
           ? const Center(child: CircularProgressIndicator())
           : controller.enrolledCourses.isEmpty

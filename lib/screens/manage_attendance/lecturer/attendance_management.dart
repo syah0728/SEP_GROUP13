@@ -1140,6 +1140,32 @@ class AttendanceGeneratedQrView extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.all(20),
         children: [
+          InkWell(
+            borderRadius: BorderRadius.circular(10),
+            onTap: controller.backToClasses,
+            child: const Padding(
+              padding: EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.arrow_back_rounded,
+                    color: Color(0xFF111827),
+                    size: 20,
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    'Back to Classes',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF111827),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
@@ -1170,18 +1196,16 @@ class AttendanceGeneratedQrView extends StatelessWidget {
           WhiteCard(
             padding: const EdgeInsets.fromLTRB(18, 20, 18, 24),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 CourseHeading(course: course),
-                const SizedBox(height: 4),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    session.section,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF6B7280),
-                    ),
+                const SizedBox(height: 6),
+                Text(
+                  session.section,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF6B7280),
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -1214,24 +1238,26 @@ class AttendanceGeneratedQrView extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 24),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFFE5E7EB)),
-                  ),
-                  child: QrImageView(
-                    data: generated.code,
-                    version: QrVersions.auto,
-                    size: 180,
-                    eyeStyle: const QrEyeStyle(
-                      eyeShape: QrEyeShape.square,
-                      color: Color(0xFF111827),
+                Center(
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFE5E7EB)),
                     ),
-                    dataModuleStyle: const QrDataModuleStyle(
-                      dataModuleShape: QrDataModuleShape.square,
-                      color: Color(0xFF111827),
+                    child: QrImageView(
+                      data: generated.code,
+                      version: QrVersions.auto,
+                      size: 180,
+                      eyeStyle: const QrEyeStyle(
+                        eyeShape: QrEyeShape.square,
+                        color: Color(0xFF111827),
+                      ),
+                      dataModuleStyle: const QrDataModuleStyle(
+                        dataModuleShape: QrDataModuleShape.square,
+                        color: Color(0xFF111827),
+                      ),
                     ),
                   ),
                 ),
