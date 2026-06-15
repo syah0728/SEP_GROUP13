@@ -80,11 +80,24 @@ class FirebaseStudentAttendanceService implements StudentAttendanceService {
   @override
   Future<StudentClassDetails?> verifyAttendanceCode(String code) async {
     if (code.trim().isEmpty) return null;
-    final snap = await _db
+    final cleanCode = code.trim().toUpperCase();
+
+    // Try short 'code' field first (manual entry)
+    var snap = await _db
         .collection('attendanceSessions')
-        .where('code', isEqualTo: code.trim().toUpperCase())
+        .where('code', isEqualTo: cleanCode)
         .limit(1)
         .get();
+
+    // Fall back to 'qrSeed' field (QR scan returns the full seed value)
+    if (snap.docs.isEmpty) {
+      snap = await _db
+          .collection('attendanceSessions')
+          .where('qrSeed', isEqualTo: code.trim())
+          .limit(1)
+          .get();
+    }
+
     if (snap.docs.isEmpty) return null;
     final doc = snap.docs.first;
     return _classDetailsFromDoc(doc.id, doc.data());

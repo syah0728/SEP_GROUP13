@@ -13,16 +13,22 @@ class StudentPageScaffold extends StatelessWidget {
     required this.child,
     required this.onMenuTap,
     this.showBack = false,
+    this.scaffoldKey,
+    this.drawer,
   });
 
   final String title;
   final Widget child;
   final VoidCallback onMenuTap;
   final bool showBack;
+  final GlobalKey<ScaffoldState>? scaffoldKey;
+  final Widget? drawer;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      key: scaffoldKey,
+      drawer: drawer,
       backgroundColor: const Color(0xFFF8F8FC),
       body: SafeArea(
         child: Column(
@@ -38,7 +44,9 @@ class StudentPageScaffold extends StatelessWidget {
               child: Row(
                 children: [
                   IconButton(
-                    onPressed: onMenuTap,
+                    onPressed: drawer != null
+                        ? () => scaffoldKey?.currentState?.openDrawer()
+                        : onMenuTap,
                     icon: Icon(
                       showBack ? Icons.arrow_back_rounded : Icons.menu_rounded,
                       color: Colors.white,
@@ -553,8 +561,15 @@ class _NavItem extends StatelessWidget {
 // ── Student Submit Attendance View ────────────────────────────────────────────
 
 class StudentSubmitView extends StatefulWidget {
-  const StudentSubmitView({super.key, required this.controller});
+  const StudentSubmitView({
+    super.key,
+    required this.controller,
+    this.scaffoldKey,
+    this.drawer,
+  });
   final StudentAttendanceController controller;
+  final GlobalKey<ScaffoldState>? scaffoldKey;
+  final Widget? drawer;
 
   @override
   State<StudentSubmitView> createState() => _StudentSubmitViewState();
@@ -576,6 +591,8 @@ class _StudentSubmitViewState extends State<StudentSubmitView> {
     return StudentPageScaffold(
       title: 'Attendance Check-In',
       onMenuTap: widget.controller.backToDashboard,
+      scaffoldKey: widget.scaffoldKey,
+      drawer: widget.drawer,
       child: Stack(
         children: [
           ListView(
