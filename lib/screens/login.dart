@@ -73,8 +73,14 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (result == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Invalid username or password for the selected role.'),
+        SnackBar(
+          content: Text(
+            _selectedRole == 'Pusat Adab'
+                ? 'Try: adab001 / password123'
+                : _selectedRole == 'Lecturer'
+                ? 'Try: lecturer001 / lecturer123'
+                : 'Try: student001 / student123',
+          ),
           backgroundColor: Colors.red,
         ),
       );
@@ -83,7 +89,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     switch (result.role) {
       case 'Student':
-        AppSession.setStudent(
+        await AppSession.setStudent(
           studentId: result.id,
           studentName: result.name,
           matricId: result.matricId ?? result.id,
@@ -91,22 +97,25 @@ class _LoginScreenState extends State<LoginScreen> {
         if (!mounted) return;
         Navigator.pushReplacementNamed(context, '/student/dashboard');
       case 'Lecturer':
-        AppSession.setLecturer(
+        await AppSession.setLecturer(
           lecturerId: result.id,
           lecturerName: result.name,
         );
         if (!mounted) return;
         Navigator.pushReplacementNamed(context, '/lecturer');
       case 'Pusat Adab':
-        AppSession.setAdab(adabId: result.id, adabName: result.name);
+        await AppSession.setAdab(adabId: result.id, adabName: result.name);
         if (!mounted) return;
         Navigator.pushReplacementNamed(context, '/dashboard');
       case 'FK Staff':
-        AppSession.setFKStaff(fkStaffId: result.id, fkStaffName: result.name);
+        await AppSession.setFKStaff(
+          fkStaffId: result.id,
+          fkStaffName: result.name,
+        );
         if (!mounted) return;
         Navigator.pushReplacementNamed(context, '/fkstaff/dashboard');
       case 'Treasury':
-        AppSession.setTreasury(
+        await AppSession.setTreasury(
           treasuryId: result.id,
           treasuryName: result.name,
         );

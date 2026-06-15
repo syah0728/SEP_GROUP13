@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:provider/provider.dart';
 
 import 'firebase_options.dart';
 import 'utils/app_colors.dart';
@@ -15,13 +16,8 @@ import 'screens/lecturer_shell.dart';
 import 'screens/student_shell.dart';
 import 'screens/login.dart';
 
-// ---------- Module 3 & 4: Academic / Financial Screens ----------
-import 'package:provider/provider.dart';
+// ---------- Module 3: Academic Screens ----------
 import 'screens/manage_academic/manage_academic_screen.dart';
-import 'screens/manage_financial/treasury/treasury_dashboard.dart';
-import 'screens/manage_financial/treasury/student_payments_view.dart';
-import 'screens/manage_financial/treasury/fee_records.dart';
-import 'controllers/manage_financial/financial_controller.dart';
 
 // ---------- Module 2: Co-Curriculum Screens ----------
 // Adab staff screens (Pusat Adab)
@@ -38,11 +34,21 @@ import 'screens/manage_cocurriculum/student/std_dashboard.dart';
 import 'screens/manage_cocurriculum/student/student_checkin_page.dart';
 import 'screens/manage_cocurriculum/student/student_record_page.dart';
 
+// ---------- Module 3: Financial Screens ----------
+import 'controllers/manage_financial/financial_controller.dart';
+import 'screens/manage_financial/student/student_financial.dart';
+import 'screens/manage_financial/treasury/treasury_dashboard.dart';
+import 'screens/manage_financial/treasury/student_payments_view.dart';
+import 'screens/manage_financial/treasury/fee_records.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initializing real Firebase config from the base code
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  // Restore whoever was logged in before a page reload so the sidebar/header
+  // keeps showing their identity instead of resetting to the demo defaults.
+  await AppSession.restore();
 
   // Seed functions from the base project module (Attendance/Operations)
   await FirebaseAttendanceService().seedIfNeeded();
@@ -56,59 +62,87 @@ class AttendanceApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'SAMS 2026',
-      theme: AppTheme.light().copyWith(
-        scaffoldBackgroundColor: AppColors.background,
+    return ChangeNotifierProvider<FinancialController>(
+      create: (_) => FinancialController(),
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        title: 'SAMS 2026',
+        theme: AppTheme.light().copyWith(
+          scaffoldBackgroundColor: AppColors.background,
+        ),
+        // App starts with the login screen, unless a session was restored
+        // after a page reload, in which case go straight back to that role's
+        // dashboard.
+        home: Builder(
+          builder: (context) =>
+              MobilePreviewFrame(child: _initialScreen(context)),
+        ),
+
+        // Named routes added dynamically for Module 2 cross-navigation
+        routes: {
+          // Auth / Basic Routes
+          '/login': (context) => const LoginScreen(),
+
+          // Lecturer route (Module 1)
+          '/lecturer': (context) => LecturerShell(
+                lecturerId: AppSession.lecturerId,
+                onSwitchActor: () =>
+                    Navigator.pushReplacementNamed(context, '/login'),
+              ),
+
+          // Adab staff routes — Module 2: Co-Curriculum (Orange theme)
+          '/dashboard': (context) => const AdabDashboard(),
+          '/modules': (context) => const ModuleManagementPage(),
+          '/create-module': (context) => const CreateModuleAdab(),
+          '/claims': (context) => const ValidateClaimsScreen(),
+          '/attendance': (context) => const AttendanceManagementScreen(),
+
+          // FK Staff routes — Module 3: Academic
+          '/fkstaff/dashboard': (context) => const ManageAcademicScreen(),
+
+          // Student routes — Module 2: Co-Curriculum (Purple theme)
+          '/student/dashboard': (context) => const StudentDashboard(),
+          '/student/modules': (context) => const CoCurriculumModulesScreen(),
+          '/student/claim': (context) => const ClaimCreditScreen(),
+          '/student/checkin': (context) => const StudentCheckinPage(),
+          '/student/record': (context) => const StudentRecordPage(),
+
+          // Student routes — Module 3: Financial
+          '/student/financial': (context) =>
+              const StudentFinancialPage(studentId: 'A20CS1001'),
+
+          // Treasury routes — Module 3: Financial
+          '/treasury/dashboard': (context) => const TreasuryDashboardView(),
+          '/treasury/payments': (context) =>
+              const TreasuryStudentPaymentsView(),
+          '/treasury/records': (context) => const TreasuryFeeRecordsView(),
+          '/treasury/fee-records': (context) => const TreasuryFeeRecordsView(),
+        },
       ),
-      // App starts with the login screen
-      home: const MobilePreviewFrame(child: LoginScreen()),
+    );
+  }
 
-      // Named routes added dynamically for Module 2 cross-navigation
-      routes: {
-        // Auth / Basic Routes
-        '/login': (context) => const LoginScreen(),
-
-        // Lecturer route (Module 4)
-        '/lecturer': (context) => LecturerShell(
+  /// Picks the first screen to show based on a session restored from local
+  /// storage, falling back to the login screen if nobody is logged in.
+  Widget _initialScreen(BuildContext context) {
+    switch (AppSession.role) {
+      case 'Student':
+        return const StudentDashboard();
+      case 'Lecturer':
+        return LecturerShell(
           lecturerId: AppSession.lecturerId,
           onSwitchActor: () =>
               Navigator.pushReplacementNamed(context, '/login'),
-        ),
-
-        // Adab staff routes (Orange theme pages)
-        '/dashboard': (context) => const AdabDashboard(),
-        '/modules': (context) => const ModuleManagementPage(),
-        '/create-module': (context) => const CreateModuleAdab(),
-        '/claims': (context) => const ValidateClaimsScreen(),
-        '/attendance': (context) => const AttendanceManagementScreen(),
-
-        // FK Staff routes (Module 3)
-        '/fkstaff/dashboard': (context) => const ManageAcademicScreen(),
-
-        // Treasury routes (Module 4)
-        '/treasury/dashboard': (context) => ChangeNotifierProvider(
-              create: (_) => FinancialController(),
-              child: const TreasuryDashboardView(),
-            ),
-        '/treasury/payments': (context) => ChangeNotifierProvider(
-              create: (_) => FinancialController(),
-              child: const TreasuryStudentPaymentsView(),
-            ),
-        '/treasury/fee-records': (context) => ChangeNotifierProvider(
-              create: (_) => FinancialController(),
-              child: const TreasuryFeeRecordsView(),
-            ),
-
-        // Student routes (Purple theme pages)
-        '/student/dashboard': (context) => const StudentDashboard(),
-        '/student/modules': (context) => const CoCurriculumModulesScreen(),
-        '/student/claim': (context) => const ClaimCreditScreen(),
-        '/student/checkin': (context) => const StudentCheckinPage(),
-        '/student/record': (context) => const StudentRecordPage(),
-      },
-    );
+        );
+      case 'Pusat Adab':
+        return const AdabDashboard();
+      case 'FK Staff':
+        return const ManageAcademicScreen();
+      case 'Treasury':
+        return const TreasuryDashboardView();
+      default:
+        return const LoginScreen();
+    }
   }
 }
 
