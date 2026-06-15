@@ -1,21 +1,44 @@
 import 'dart:math';
-
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 import 'firebase_options.dart';
+import 'utils/app_colors.dart';
+import 'theme/app_theme.dart';
 import 'services/attendance_service.dart';
 import 'services/firebase_seed_service.dart';
-import 'theme/app_theme.dart';
+
+// ---------- Shared / Shell Screens ----------
 import 'screens/actor_selection_view.dart';
 import 'screens/lecturer_shell.dart';
 import 'screens/student_shell.dart';
+import 'screens/login.dart';
+
+// ---------- Module 2: Co-Curriculum Screens ----------
+// Adab staff screens (Pusat Adab)
+import 'screens/manage_cocurriculum/pusatadab/adab_dashboard.dart';
+import 'screens/manage_cocurriculum/pusatadab/attendance_management.dart';
+import 'screens/manage_cocurriculum/pusatadab/create_module_adab.dart';
+import 'screens/manage_cocurriculum/pusatadab/module_management.dart';
+import 'screens/manage_cocurriculum/pusatadab/validate_claim.dart';
+
+// Student screens
+import 'screens/manage_cocurriculum/student/claim_credit.dart';
+import 'screens/manage_cocurriculum/student/cocu_activity.dart';
+import 'screens/manage_cocurriculum/student/std_dashboard.dart';
+import 'screens/manage_cocurriculum/student/student_checkin_page.dart';
+import 'screens/manage_cocurriculum/student/student_record_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initializing real Firebase config from the base code
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  // Seed functions from the base project module (Attendance/Operations)
   await FirebaseAttendanceService().seedIfNeeded();
   await FirebaseSeedService().seedIfNeeded();
+
   runApp(const AttendanceApp());
 }
 
@@ -27,8 +50,38 @@ class AttendanceApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'SAMS 2026',
-      theme: AppTheme.light(),
-      home: const MobilePreviewFrame(child: AppFlowRoot()),
+      theme: AppTheme.light().copyWith(
+        scaffoldBackgroundColor: AppColors.background,
+      ),
+      // App starts with the login screen
+      home: const MobilePreviewFrame(child: LoginScreen()),
+
+      // Named routes added dynamically for Module 2 cross-navigation
+      routes: {
+        // Auth / Basic Routes
+        '/login': (context) => const LoginScreen(),
+
+        // Lecturer route (Module 4)
+        '/lecturer': (context) => LecturerShell(
+              lecturerId: 'LE210145',
+              onSwitchActor: () =>
+                  Navigator.pushReplacementNamed(context, '/login'),
+            ),
+
+        // Adab staff routes (Orange theme pages)
+        '/dashboard': (context) => const AdabDashboard(),
+        '/modules': (context) => const ModuleManagementPage(),
+        '/create-module': (context) => const CreateModuleAdab(),
+        '/claims': (context) => const ValidateClaimsScreen(),
+        '/attendance': (context) => const AttendanceManagementScreen(),
+
+        // Student routes (Purple theme pages)
+        '/student/dashboard': (context) => const StudentDashboard(),
+        '/student/modules': (context) => const CoCurriculumModulesScreen(),
+        '/student/claim': (context) => const ClaimCreditScreen(),
+        '/student/checkin': (context) => const StudentCheckinPage(),
+        '/student/record': (context) => const StudentRecordPage(),
+      },
     );
   }
 }

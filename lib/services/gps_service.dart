@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 
 import '../models/manage_attendance/attendance_models.dart';
@@ -42,9 +41,6 @@ class GpsService {
     required double requiredLongitude,
     required double maxDistanceMeters,
   }) async {
-    if (kIsWeb) {
-      return (isAllowed: true, message: 'GPS bypassed for web.');
-    }
     try {
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
