@@ -42,6 +42,7 @@ class _LoginScreenState extends State<LoginScreen> {
     'Pusat Adab': ('adab001', 'password123', '/dashboard'),
     'Lecturer': ('lecturer001', 'lecturer123', '/lecturer'),
     'Student': ('student001', 'student123', '/student/dashboard'),
+    'Treasury': ('treasury001', 'treasury123', '/treasury/dashboard'),
   };
 
   // This function runs when user taps "Login"
@@ -76,7 +77,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 ? 'Try: adab001 / password123'
                 : _selectedRole == 'Lecturer'
                     ? 'Try: lecturer001 / lecturer123'
-                    : 'Try: student001 / student123',
+                    : _selectedRole == 'Treasury'
+                        ? 'Try: treasury001 / treasury123'
+                        : 'Try: student001 / student123',
           ),
           backgroundColor: Colors.red,
         ),
@@ -236,6 +239,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                 value: 'Lecturer', child: Text('Lecturer')),
                             DropdownMenuItem(
                                 value: 'Student', child: Text('Student')),
+                            DropdownMenuItem(
+                                value: 'Treasury', child: Text('Treasury')),
                           ],
                           onChanged: (value) =>
                               setState(() => _selectedRole = value!),
