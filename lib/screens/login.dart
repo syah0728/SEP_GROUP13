@@ -236,6 +236,10 @@ class _LoginScreenState extends State<LoginScreen> {
                                 value: 'Lecturer', child: Text('Lecturer')),
                             DropdownMenuItem(
                                 value: 'Student', child: Text('Student')),
+                            DropdownMenuItem(
+                                value: 'FK Staff', child: Text('FK Staff')),
+                            DropdownMenuItem(
+                                value: 'Treasury', child: Text('Treasury')),
                           ],
                           onChanged: (value) =>
                               setState(() => _selectedRole = value!),
