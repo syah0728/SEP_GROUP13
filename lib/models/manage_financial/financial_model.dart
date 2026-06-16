@@ -1,5 +1,18 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+DateTime _parseDate(dynamic value) {
+  if (value is Timestamp) return value.toDate();
+  if (value is String) return DateTime.tryParse(value) ?? DateTime.now();
+  return DateTime.now();
+}
+
+DateTime? _parseDateNullable(dynamic value) {
+  if (value == null) return null;
+  if (value is Timestamp) return value.toDate();
+  if (value is String) return DateTime.tryParse(value);
+  return null;
+}
+
 class FeeBreakdown {
   final double educationFee;
   final double hostelFee;
@@ -41,6 +54,7 @@ class FinancialModel {
   final String paymentDeadline;
   final bool deadlineOverdue;
   final String status;
+  final String paymentID;
 
   FinancialModel({
     required this.studentId,
@@ -54,6 +68,7 @@ class FinancialModel {
     required this.paymentDeadline,
     required this.deadlineOverdue,
     required this.status,
+    this.paymentID = '',
   });
 
   factory FinancialModel.fromMap(Map<String, dynamic> map, {String studentName = ''}) {
@@ -75,6 +90,7 @@ class FinancialModel {
       paymentDeadline: map['paymentDeadine']  ?? map['paymentDeadline'] ?? 'Week 5',
       deadlineOverdue: map['deadlineOverdue'] ?? false,
       status:          (map['paymentStatus']  ?? 'outstanding').toString().toLowerCase(),
+      paymentID:       map['paymentID']       ?? '',
     );
   }
 
@@ -124,9 +140,7 @@ class PaymentHistoryModel {
       amount:      (map['totalAmount'] ?? 0).toDouble(),
       method:      map['paymentMethod'] ?? '',
       reference:   map['receiptNo']    ?? '',
-      date: map['createdAt'] != null
-          ? (map['createdAt']).toDate()
-          : DateTime.now(),
+      date: _parseDate(map['createdAt']),
     );
   }
 }
@@ -206,9 +220,7 @@ class NotificationModel {
       title:     map['title']     ?? '',
       message:   map['message']   ?? '',
       type:      map['type']      ?? 'reminder',
-      date: map['createdAt'] != null
-          ? (map['createdAt']).toDate()
-          : DateTime.now(),
+      date: _parseDate(map['createdAt']),
     );
   }
 }
@@ -246,8 +258,21 @@ class StudentSummaryModel {
   });
 
   factory StudentSummaryModel.fromMap(Map<String, dynamic> map, String docId, {String studentName = ''}) {
-    final total = (map['totalAmount'] ?? 0).toDouble();
-    final paid  = (map['paidAmount']  ?? 0).toDouble();
+    final total       = (map['totalAmount'] ?? 0).toDouble();
+    final paid        = (map['paidAmount']  ?? 0).toDouble();
+    final outstanding = (total - paid).clamp(0.0, double.infinity);
+    final stored      = (map['paymentStatus'] ?? '').toString().toLowerCase();
+    final status = (stored == 'paid' || stored == 'partial' || stored == 'outstanding')
+        ? stored
+        : outstanding <= 0
+            ? 'paid'
+            : paid > 0
+                ? 'partial'
+                : 'outstanding';
+    final storedBlock     = (map['isBlocked']       ?? false) as bool;
+    final deadlineOverdue = (map['deadlineOverdue'] ?? false) as bool;
+    final effectiveBlock = storedBlock || (deadlineOverdue && outstanding > 0);
+
     return StudentSummaryModel(
       id:          docId,
       name:        studentName,
@@ -255,13 +280,11 @@ class StudentSummaryModel {
       semester:    map['semester']      ?? '',
       totalFees:   total,
       paid:        paid,
-      outstanding: (total - paid).clamp(0, double.infinity),
-      status:      (map['paymentStatus'] ?? 'outstanding').toString().toLowerCase(),
-      isBlocked:   map['isBlocked']     ?? false,
-      isWeek5:     map['deadlineOverdue'] ?? false,
-      lastPayment: map['lastPaymentDate'] != null
-          ? (map['lastPaymentDate'] as Timestamp).toDate()
-          : null,
+      outstanding: outstanding,
+      status:      status,
+      isBlocked:   effectiveBlock,
+      isWeek5:     deadlineOverdue,
+      lastPayment: _parseDateNullable(map['lastPaymentDate']),
       feeBreakdown: FeeBreakdown(
         educationFee: (map['educationFee'] ?? 0).toDouble(),
         hostelFee:    (map['hostelFee']    ?? 0).toDouble(),
@@ -326,9 +349,7 @@ class RecentTransactionModel {
       amount:      (map['totalAmount']  ?? 0).toDouble(),
       method:      map['paymentMethod'] ?? '',
       reference:   map['receiptNo']     ?? '',
-      date: map['createdAt'] != null
-          ? (map['createdAt']).toDate()
-          : DateTime.now(),
+      date: _parseDate(map['createdAt']),
     );
   }
 }

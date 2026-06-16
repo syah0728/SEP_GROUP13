@@ -29,6 +29,10 @@ class AppSession {
   static String? _studentId;
   static String? _studentName;
   static String? _matricId;
+  static bool _isBlocked = false;
+
+  static bool get isBlocked => _isBlocked;
+  static void setBlocked(bool value) => _isBlocked = value;
 
   static String? _lecturerId;
   static String? _lecturerName;
@@ -160,6 +164,7 @@ class AppSession {
     _studentId = null;
     _studentName = null;
     _matricId = null;
+    _isBlocked = false;
     _lecturerId = null;
     _lecturerName = null;
     _adabId = null;

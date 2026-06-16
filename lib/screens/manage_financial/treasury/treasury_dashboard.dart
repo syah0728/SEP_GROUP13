@@ -7,6 +7,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../controllers/manage_financial/financial_controller.dart';
+import '../../../services/firebase_seed_service.dart';
 import '../../../widgets/treasury_drawer.dart';
 import '../../../services/session_service.dart';
 import 'student_payments_view.dart';
@@ -388,6 +389,17 @@ class _TreasuryDashboardViewState extends State<TreasuryDashboardView> {
                     ),
                   ),
 
+                  const SizedBox(height: 12),
+
+                  // ── Seed Missing Fees Button ──────────────────
+                  _SeedFeesButton(),
+
+                  const SizedBox(height: 10),
+
+                  // ── Add More Students Button ──────────────────
+                  _AddStudentsButton(),
+
+
                   const SizedBox(height: 24),
                 ],
               ),
@@ -532,6 +544,198 @@ class _NavCard extends StatelessWidget {
             const Icon(Icons.chevron_right, color: _kGrey, size: 20),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ── Add More Students Button ───────────────────────────────────
+class _AddStudentsButton extends StatefulWidget {
+  @override
+  State<_AddStudentsButton> createState() => _AddStudentsButtonState();
+}
+
+class _AddStudentsButtonState extends State<_AddStudentsButton> {
+  bool _loading = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 46,
+      child: OutlinedButton.icon(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: _kIconBlue,
+          side: const BorderSide(color: _kIconBlue),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+        icon: _loading
+            ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2, color: _kIconBlue),
+              )
+            : const Icon(Icons.person_add_outlined, size: 18),
+        label: Text(
+          _loading ? 'Adding students...' : 'Add More Students',
+          style: const TextStyle(
+            fontSize: 14,
+            fontFamily: 'Inter',
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        onPressed: _loading
+            ? null
+            : () async {
+                final confirm = await showDialog<bool>(
+                  context: context,
+                  builder: (_) => AlertDialog(
+                    title: const Text('Add More Students'),
+                    content: const Text(
+                      'This will add 5 new students (CD21050, CD21067, CD21091, '
+                      'CD21033, CD21112) with their fee records. '
+                      'Students that already exist will be skipped.',
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: const Text('Cancel'),
+                      ),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _kIconBlue,
+                        ),
+                        onPressed: () => Navigator.pop(context, true),
+                        child: const Text(
+                          'Add',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirm != true || !context.mounted) return;
+
+                setState(() => _loading = true);
+                try {
+                  final count = await FirebaseSeedService().addMoreStudents();
+                  if (context.mounted) {
+                    context.read<FinancialController>().loadAllStudents();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          count == 0
+                              ? 'All students already exist.'
+                              : 'Added $count new student(s) successfully.',
+                        ),
+                        backgroundColor: _kIconBlue,
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Failed: $e'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
+                if (mounted) setState(() => _loading = false);
+              },
+      ),
+    );
+  }
+}
+
+// ── Seed Missing Fees Button ───────────────────────────────────
+class _SeedFeesButton extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final ctrl = context.watch<FinancialController>();
+
+    return SizedBox(
+      width: double.infinity,
+      height: 46,
+      child: OutlinedButton.icon(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: _kGradStart,
+          side: const BorderSide(color: _kGradStart),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+        icon: ctrl.isSeeding
+            ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: _kGradStart,
+                ),
+              )
+            : const Icon(Icons.auto_fix_high_outlined, size: 18),
+        label: Text(
+          ctrl.isSeeding ? 'Creating missing fees...' : 'Seed Missing Student Fees',
+          style: const TextStyle(
+            fontSize: 14,
+            fontFamily: 'Inter',
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        onPressed: ctrl.isSeeding
+            ? null
+            : () async {
+                final confirm = await showDialog<bool>(
+                  context: context,
+                  builder: (_) => AlertDialog(
+                    title: const Text('Seed Missing Fees'),
+                    content: const Text(
+                      'This will create a default studentFees record '
+                      '(RM 2450, outstanding) for every student that does not '
+                      'already have one. Continue?',
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: const Text('Cancel'),
+                      ),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _kGradStart,
+                        ),
+                        onPressed: () => Navigator.pop(context, true),
+                        child: const Text(
+                          'Seed',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirm == true && context.mounted) {
+                  await context
+                      .read<FinancialController>()
+                      .seedMissingStudentFees();
+                  if (context.mounted) {
+                    final count =
+                        context.read<FinancialController>().seededCount;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          count == 0
+                              ? 'All students already have fee records.'
+                              : 'Created $count missing fee record(s).',
+                        ),
+                        backgroundColor: _kGradStart,
+                      ),
+                    );
+                  }
+                }
+              },
       ),
     );
   }

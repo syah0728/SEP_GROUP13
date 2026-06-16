@@ -72,6 +72,14 @@ class _StudentPaymentHistoryPageState extends State<StudentPaymentHistoryPage> {
                     style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                 ),
+                if (ctrl.errorMessage != null)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Text(
+                      ctrl.errorMessage!,
+                      style: const TextStyle(color: Colors.red, fontSize: 13),
+                    ),
+                  ),
                 Expanded(
                   child: history.isEmpty
                       ? const Center(child: Text('No payment records found.'))

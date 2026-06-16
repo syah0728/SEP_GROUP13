@@ -550,4 +550,128 @@ class FirebaseSeedService {
     }
     await batch.commit();
   }
+
+  // ── Add more students (safe to call multiple times — checks before inserting) ──
+  Future<int> addMoreStudents() async {
+    const newStudents = [
+      {
+        'docId':       'A20CS1005',
+        'studentID':   'CD21050',
+        'studentName': 'Khairul Anwar bin Hassan',
+        'programme':   'Bachelor of Computer Science (Software Engineering)',
+        'semester':    'Semester 2, 2025/2026',
+        'lecturerID':  'LE210145',
+        'total_credits': 78,
+        'password':    'student123',
+      },
+      {
+        'docId':       'A20CS1006',
+        'studentID':   'CD21067',
+        'studentName': 'Nur Izzati binti Rashid',
+        'programme':   'Bachelor of Computer Science (Software Engineering)',
+        'semester':    'Semester 2, 2025/2026',
+        'lecturerID':  'LE210145',
+        'total_credits': 82,
+        'password':    'student123',
+      },
+      {
+        'docId':       'A20CS1007',
+        'studentID':   'CD21091',
+        'studentName': 'Muhammad Haziq bin Zainal',
+        'programme':   'Bachelor of Computer Science (Software Engineering)',
+        'semester':    'Semester 2, 2025/2026',
+        'lecturerID':  'LE210145',
+        'total_credits': 70,
+        'password':    'student123',
+      },
+      {
+        'docId':       'A20CS1008',
+        'studentID':   'CD21033',
+        'studentName': 'Siti Mariam binti Ahmad',
+        'programme':   'Bachelor of Computer Science (Software Engineering)',
+        'semester':    'Semester 2, 2025/2026',
+        'lecturerID':  'LE210145',
+        'total_credits': 90,
+        'password':    'student123',
+      },
+      {
+        'docId':       'A20CS1009',
+        'studentID':   'CD21112',
+        'studentName': 'Faris Danial bin Mohd Noor',
+        'programme':   'Bachelor of Computer Science (Software Engineering)',
+        'semester':    'Semester 2, 2025/2026',
+        'lecturerID':  'LE210145',
+        'total_credits': 66,
+        'password':    'student123',
+      },
+    ];
+
+    // Fees config per student (matched by studentID)
+    const feesConfig = {
+      'CD21050': {
+        'paidAmount': 2450.0, 'paymentStatus': 'paid',
+        'deadlineOverdue': false, 'isBlocked': false,
+      },
+      'CD21067': {
+        'paidAmount': 1200.0, 'paymentStatus': 'partial',
+        'deadlineOverdue': false, 'isBlocked': false,
+      },
+      'CD21091': {
+        'paidAmount': 0.0, 'paymentStatus': 'outstanding',
+        'deadlineOverdue': true, 'isBlocked': true,
+      },
+      'CD21033': {
+        'paidAmount': 800.0, 'paymentStatus': 'partial',
+        'deadlineOverdue': true, 'isBlocked': true,
+      },
+      'CD21112': {
+        'paidAmount': 0.0, 'paymentStatus': 'outstanding',
+        'deadlineOverdue': false, 'isBlocked': false,
+      },
+    };
+
+    int added = 0;
+    for (final s in newStudents) {
+      final docId     = s['docId']     as String;
+      final studentID = s['studentID'] as String;
+
+      // Skip if student already exists
+      final existing = await _db.collection('students').doc(docId).get();
+      if (existing.exists) continue;
+
+      final batch = _db.batch();
+
+      // Add to students collection
+      batch.set(_db.collection('students').doc(docId), {
+        'studentID':     studentID,
+        'studentName':   s['studentName'],
+        'programme':     s['programme'],
+        'semester':      s['semester'],
+        'lecturerID':    s['lecturerID'],
+        'total_credits': s['total_credits'],
+        'password':      s['password'],
+      });
+
+      // Add to studentFees collection
+      final fee = feesConfig[studentID]!;
+      batch.set(_db.collection('studentFees').doc('FEE_$docId'), {
+        'studentID':      studentID,
+        'semester':       s['semester'],
+        'educationFee':   1500.0,
+        'hostelFee':      800.0,
+        'otherFee':       150.0,
+        'totalAmount':    2450.0,
+        'paidAmount':     fee['paidAmount'],
+        'paymentStatus':  fee['paymentStatus'],
+        'isBlocked':      fee['isBlocked'],
+        'deadlineOverdue': fee['deadlineOverdue'],
+        'paymentDeadline': 'Week 5',
+        'createdAt':      FieldValue.serverTimestamp(),
+      });
+
+      await batch.commit();
+      added++;
+    }
+    return added;
+  }
 }

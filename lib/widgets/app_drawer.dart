@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/session_service.dart';
 
 const _kPurple = Color(0xFFAB43FE);
 const _kPurpleLight = Color(0xFFF3E8FF);
@@ -96,9 +97,24 @@ class _DrawerItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final currentRoute = ModalRoute.of(context)?.settings.name;
     final isActive = currentRoute == route && textColor == null;
+    final isBlocked = AppSession.isBlocked &&
+        route != '/student/financial' &&
+        textColor == null; // don't lock the Logout item
 
     return GestureDetector(
       onTap: () {
+        if (isBlocked) {
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Akses disekat. Sila selesaikan pembayaran yuran terlebih dahulu.',
+              ),
+              backgroundColor: Color(0xFFEF4444),
+            ),
+          );
+          return;
+        }
         Navigator.pop(context);
         if (currentRoute != route) {
           Navigator.pushReplacementNamed(context, route);
@@ -109,23 +125,33 @@ class _DrawerItem extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
         child: Row(
           children: [
-            Icon(icon,
-                color: isActive
-                    ? _kPurple
-                    : (iconColor ?? _kText),
-                size: 22),
+            Icon(
+              isBlocked ? Icons.lock_outline : icon,
+              color: isBlocked
+                  ? const Color(0xFF9CA3AF)
+                  : isActive
+                      ? _kPurple
+                      : (iconColor ?? _kText),
+              size: 22,
+            ),
             const SizedBox(width: 16),
             Expanded(
               child: Text(
                 label,
                 style: TextStyle(
-                  color: isActive ? _kPurple : (textColor ?? _kText),
+                  color: isBlocked
+                      ? const Color(0xFF9CA3AF)
+                      : isActive
+                          ? _kPurple
+                          : (textColor ?? _kText),
                   fontSize: 16,
-                  fontWeight:
-                      isActive ? FontWeight.w600 : FontWeight.normal,
+                  fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
                 ),
               ),
             ),
+            if (isBlocked)
+              const Icon(Icons.lock_outline,
+                  size: 16, color: Color(0xFF9CA3AF)),
           ],
         ),
       ),

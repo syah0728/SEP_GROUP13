@@ -19,6 +19,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/manage_financial/financial_model.dart';
 import '../../services/report_services.dart';
+import '../../services/session_service.dart';
 
 class FinancialController extends ChangeNotifier {
   // ── Firestore instance connected to sams-app database ────
@@ -57,14 +58,14 @@ class FinancialController extends ChangeNotifier {
   String get selectedFeeType => _selectedFeeType;
   ReceiptModel? get lastReceipt => _lastReceipt;
 
-  // ── Load student financial data from student_fee collection ──
+  // ── Load student financial data from studentFees collection ──
   Future<void> loadStudentFinancial(String studentId) async {
     _setLoading(true);
     _errorMessage = null;
     try {
-      // Read from student_fee collection, match by studentID field
+      // Read from studentFees collection, match by studentID field
       final snap = await _db
-          .collection('student_fee')
+          .collection('studentFees')
           .where('studentID', isEqualTo: studentId)
           .limit(1)
           .get(const GetOptions(source: Source.server));
@@ -75,14 +76,46 @@ class FinancialController extends ChangeNotifier {
         // Get studentName from students collection (safe — won't crash if missing)
         String studentName = '';
         try {
-          final studentDoc = await _db.collection('students').doc(studentId).get();
-          studentName = studentDoc.data()?['studentName'] ?? '';
+          final studentSnap = await _db
+              .collection('students')
+              .where('studentID', isEqualTo: studentId)
+              .limit(1)
+              .get();
+          if (studentSnap.docs.isNotEmpty) {
+            studentName = studentSnap.docs.first.data()['studentName'] ?? '';
+          }
         } catch (_) {}
 
         _studentFinancial = FinancialModel.fromMap(data, studentName: studentName);
+
+        // Effective block = manual block OR deadline overdue with unpaid fees
+        final manualBlock   = _studentFinancial!.isBlocked;
+        final autoBlock     = _studentFinancial!.deadlineOverdue &&
+                              _studentFinancial!.totalOutstanding > 0;
+        final effectiveBlock = manualBlock || autoBlock;
+
+        // Sync isBlocked in Firestore if it differs from effective value
+        if (effectiveBlock != manualBlock) {
+          try {
+            await snap.docs.first.reference.update({'isBlocked': effectiveBlock});
+            if (effectiveBlock) {
+              await _db.collection('notifications').add({
+                'studentID': studentId,
+                'title':     'Account Blocked',
+                'message':   'Your account has been blocked due to outstanding fees '
+                             'past the payment deadline. Please settle your fees to restore access.',
+                'createdAt': FieldValue.serverTimestamp(),
+                'type':      'blocked',
+                'isRead':    false,
+              });
+            }
+          } catch (_) {}
+        }
+
+        AppSession.setBlocked(effectiveBlock);
       } else {
         _studentFinancial = null;
-        _errorMessage = 'No record found for "$studentId". Check Firestore Rules — student_fee collection may be blocked.';
+        _errorMessage = 'No record found for "$studentId". Check Firestore Rules — studentFees collection may be blocked.';
       }
     } catch (e) {
       _studentFinancial = null;
@@ -93,6 +126,7 @@ class FinancialController extends ChangeNotifier {
 
   // ── Load student payment history from sams-app Firestore ─
   // Reads from: payments (filtered by studentId, newest first)
+  // Falls back to fetching by paymentID from studentFees if query returns empty.
   Future<void> loadPaymentHistory(String studentId) async {
     _setLoading(true);
     _errorMessage = null;
@@ -102,10 +136,25 @@ class FinancialController extends ChangeNotifier {
           .where('studentID', isEqualTo: studentId)
           .get();
 
-      _paymentHistory = snap.docs
-          .map((d) => PaymentHistoryModel.fromMap(d.data(), d.id))
-          .toList()
+      if (snap.docs.isNotEmpty) {
+        _paymentHistory = snap.docs
+            .map((d) => PaymentHistoryModel.fromMap(d.data(), d.id))
+            .toList()
           ..sort((a, b) => b.date.compareTo(a.date));
+      } else {
+        // Fallback: fetch the payment linked in studentFees by paymentID
+        final payId = _studentFinancial?.paymentID ?? '';
+        if (payId.isNotEmpty) {
+          final doc = await _db.collection('payments').doc(payId).get();
+          if (doc.exists) {
+            _paymentHistory = [PaymentHistoryModel.fromMap(doc.data()!, doc.id)];
+          } else {
+            _paymentHistory = [];
+          }
+        } else {
+          _paymentHistory = [];
+        }
+      }
     } catch (e) {
       _errorMessage = 'Failed to load payment history: $e';
     }
@@ -187,7 +236,7 @@ class FinancialController extends ChangeNotifier {
 
       // ── Update balance using Firestore transaction ────────
       final feeQuery = await _db
-          .collection('student_fee')
+          .collection('studentFees')
           .where('studentID', isEqualTo: studentId)
           .limit(1)
           .get();
@@ -217,6 +266,7 @@ class FinancialController extends ChangeNotifier {
           'paidAmount':      newPaid,
           'paymentStatus':   newStatus,
           'isBlocked':       newOut <= 0 ? false : (snap.data()?['isBlocked'] ?? false),
+          'deadlineOverdue': newOut <= 0 ? false : (snap.data()?['deadlineOverdue'] ?? false),
           'lastPaymentDate': FieldValue.serverTimestamp(),
         });
       });
@@ -296,43 +346,97 @@ class FinancialController extends ChangeNotifier {
       _allStudents.where((s) => s.status == 'outstanding').length;
 
   // ── Load treasury dashboard ───────────────────────────────
-  // Reads from: summary/semester
+  // Computes totals from studentFees; semester_summary used only for semester name
   Future<void> loadDashboard() async {
     _setLoading(true);
     _errorMessage = null;
     try {
-      // Read summary document from sams-app Firestore
-      final doc = await _db
-          .collection('semester_summary')
-          .doc('current')
-          .get();
-
-      if (doc.exists && doc.data() != null) {
-        _dashboard = DashboardSummaryModel.fromMap(doc.data()!);
-      }
-
-      // Also load all students for stat counts
       await loadAllStudents();
+
+      // Compute financial totals from actual student data
+      final totalRevenue       = _allStudents.fold<double>(0, (s, e) => s + e.paid);
+      final pendingCollection  = _allStudents.fold<double>(0, (s, e) => s + e.outstanding);
+      final totalFees          = totalRevenue + pendingCollection;
+      final collectionRate     = totalFees > 0 ? (totalRevenue / totalFees) * 100 : 0.0;
+      final paidStudents       = _allStudents.where((s) => s.status == 'paid').length;
+      final pendingStudents    = _allStudents.where((s) => s.status != 'paid').length;
+
+      // Try to get semester label from Firestore; fall back to student data
+      String semester = _allStudents.isNotEmpty ? _allStudents.first.semester : '';
+      try {
+        final doc = await _db.collection('semester_summary').doc('current').get();
+        if (doc.exists && doc.data() != null) {
+          final s = doc.data()!['semester'] ?? '';
+          if ((s as String).isNotEmpty) semester = s;
+        }
+      } catch (_) {}
+
+      _dashboard = DashboardSummaryModel(
+        totalRevenue:      totalRevenue,
+        pendingCollection: pendingCollection,
+        collectionRate:    collectionRate,
+        totalPaid:         paidStudents,
+        totalPending:      pendingStudents,
+        semester:          semester,
+      );
     } catch (e) {
       _errorMessage = 'Failed to load dashboard: $e';
     }
     _setLoading(false);
   }
 
-  // ── Load all students list from student_fee collection ───
+  // ── Load all students list from studentFees collection ───
   Future<void> loadAllStudents() async {
     _setLoading(true);
     _errorMessage = null;
     try {
-      final feeSnap = await _db.collection('student_fee').get();
+      final feeSnap = await _db.collection('studentFees').get();
       final List<StudentSummaryModel> list = [];
 
       for (final doc in feeSnap.docs) {
         final data = doc.data();
         final studentId = data['studentID'] as String? ?? '';
-        final studentDoc = await _db.collection('students').doc(studentId).get();
-        final studentName = studentDoc.data()?['studentName'] as String? ?? '';
-        list.add(StudentSummaryModel.fromMap(data, doc.id, studentName: studentName));
+
+        // Query by studentID field (doc IDs are lowercase, field values may differ)
+        String studentName = '';
+        try {
+          final studentSnap = await _db
+              .collection('students')
+              .where('studentID', isEqualTo: studentId)
+              .limit(1)
+              .get();
+          if (studentSnap.docs.isNotEmpty) {
+            studentName = studentSnap.docs.first.data()['studentName'] as String? ?? '';
+          }
+        } catch (_) {}
+
+        // If lastPaymentDate is missing but paidAmount > 0, fetch from payments
+        // Note: no orderBy here — avoids composite index requirement; sort in Dart
+        Map<String, dynamic> enriched = Map.from(data);
+        if (enriched['lastPaymentDate'] == null &&
+            (enriched['paidAmount'] ?? 0) > 0 &&
+            studentId.isNotEmpty) {
+          try {
+            final paySnap = await _db
+                .collection('payments')
+                .where('studentID', isEqualTo: studentId)
+                .get();
+            if (paySnap.docs.isNotEmpty) {
+              final sorted = paySnap.docs.toList()
+                ..sort((a, b) {
+                  final aTs = a.data()['createdAt'];
+                  final bTs = b.data()['createdAt'];
+                  if (aTs is Timestamp && bTs is Timestamp) {
+                    return bTs.compareTo(aTs);
+                  }
+                  return 0;
+                });
+              enriched['lastPaymentDate'] = sorted.first.data()['createdAt'];
+            }
+          } catch (_) {}
+        }
+
+        list.add(StudentSummaryModel.fromMap(enriched, doc.id, studentName: studentName));
       }
 
       _allStudents = list;
@@ -418,13 +522,17 @@ class FinancialController extends ChangeNotifier {
     _errorMessage = null;
     try {
       final feeQuery = await _db
-          .collection('student_fee')
+          .collection('studentFees')
           .where('studentID', isEqualTo: studentDocId)
           .limit(1)
           .get();
 
       if (feeQuery.docs.isEmpty) throw Exception('Student fee record not found.');
-      await feeQuery.docs.first.reference.update({'isBlocked': block});
+      // When unblocking manually, also clear deadlineOverdue so student isn't auto-re-blocked on next login
+      await feeQuery.docs.first.reference.update({
+        'isBlocked': block,
+        if (!block) 'deadlineOverdue': false,
+      });
 
       // Write notification to student
       await _db.collection('notifications').add({
@@ -469,32 +577,78 @@ class FinancialController extends ChangeNotifier {
   }
 
   // ── Load fee records for Fee Records screen ───────────────
-  // Reads from:
-  //   fee_records (monthly records)
-  //   payments    (recent 5 transactions)
-  //   summary/semester (overall summary)
+  // Computes summary from studentFees; builds monthly records from payments
   Future<void> loadFeeRecords() async {
     _setLoading(true);
     _errorMessage = null;
     try {
-      _monthlyRecords = [];
+      // Ensure student list is loaded for summary computation
+      if (_allStudents.isEmpty) await loadAllStudents();
 
-      // Load 5 most recent payments from payments collection
-      final txSnap = await _db
-          .collection('payments')
-          .orderBy('createdAt', descending: true)
-          .limit(5)
-          .get();
+      // Compute financial totals from student data
+      final totalRevenue      = _allStudents.fold<double>(0, (s, e) => s + e.paid);
+      final pendingCollection = _allStudents.fold<double>(0, (s, e) => s + e.outstanding);
+      final totalFees         = totalRevenue + pendingCollection;
+      final collectionRate    = totalFees > 0 ? (totalRevenue / totalFees) * 100 : 0.0;
+      final paidStudents      = _allStudents.where((s) => s.status == 'paid').length;
+      final pendingStudents   = _allStudents.where((s) => s.status != 'paid').length;
+      String semester         = _allStudents.isNotEmpty ? _allStudents.first.semester : '';
 
-      _recentTx = txSnap.docs
-          .map((d) => RecentTransactionModel.fromMap(d.data()))
-          .toList();
+      _dashboard = DashboardSummaryModel(
+        totalRevenue:      totalRevenue,
+        pendingCollection: pendingCollection,
+        collectionRate:    collectionRate,
+        totalPaid:         paidStudents,
+        totalPending:      pendingStudents,
+        semester:          semester,
+      );
 
-      final summaryDoc = await _db.collection('semester_summary').doc('current').get();
+      // Load all payments to build monthly breakdown + recent list
+      final allPaySnap = await _db.collection('payments').get();
+      final monthNames = ['','January','February','March','April','May','June',
+                          'July','August','September','October','November','December'];
 
-      if (summaryDoc.exists && summaryDoc.data() != null) {
-        _dashboard = DashboardSummaryModel.fromMap(summaryDoc.data()!);
+      final Map<String, Map<String, dynamic>> byMonth = {};
+      for (final doc in allPaySnap.docs) {
+        final data = doc.data();
+        final raw  = data['createdAt'];
+        DateTime? date;
+        if (raw is Timestamp) date = raw.toDate();
+        if (date == null) continue;
+
+        final key = '${date.year}-${date.month.toString().padLeft(2, '0')}';
+        byMonth[key] ??= {
+          'month': monthNames[date.month],
+          'year': date.year,
+          'collected': 0.0,
+          'studentSet': <String>{},
+        };
+        byMonth[key]!['collected'] =
+            (byMonth[key]!['collected'] as double) + (data['totalAmount'] ?? 0).toDouble();
+        (byMonth[key]!['studentSet'] as Set<String>).add(data['studentID'] ?? '');
       }
+
+      final sortedEntries = byMonth.entries.toList()
+        ..sort((a, b) => b.key.compareTo(a.key)); // YYYY-MM sort descending
+      _monthlyRecords = sortedEntries.map((e) {
+        final v = e.value;
+        return MonthlyFeeRecord(
+          id:           e.key,
+          month:        v['month'] as String,
+          year:         v['year'] as int,
+          collected:    v['collected'] as double,
+          pending:      0,
+          studentsPaid: (v['studentSet'] as Set<String>).length,
+        );
+      }).toList();
+
+      // Recent 5 transactions (sorted newest-first in Dart)
+      _recentTx = allPaySnap.docs
+          .map((d) => RecentTransactionModel.fromMap(d.data()))
+          .where((tx) => tx.date.year > 2000)
+          .toList()
+        ..sort((a, b) => b.date.compareTo(a.date));
+      if (_recentTx.length > 5) _recentTx = _recentTx.sublist(0, 5);
     } catch (e) {
       _errorMessage = 'Failed to load fee records: $e';
     }
@@ -526,6 +680,73 @@ class FinancialController extends ChangeNotifier {
       _errorMessage = 'Export failed: $e';
     }
     _isExporting = false;
+    notifyListeners();
+  }
+
+  // ── Seed missing studentFees for any student without one ─
+  // Reads students collection, checks each against studentFees,
+  // creates a default outstanding record for any student missing one.
+  bool _isSeeding = false;
+  bool get isSeeding => _isSeeding;
+  int _seededCount = 0;
+  int get seededCount => _seededCount;
+
+  Future<void> seedMissingStudentFees() async {
+    _isSeeding = true;
+    _seededCount = 0;
+    notifyListeners();
+    try {
+      // Get all students
+      final studentsSnap = await _db.collection('students').get();
+
+      // Get all existing studentFees (by studentID field)
+      final feesSnap = await _db.collection('studentFees').get();
+      final existingIds = feesSnap.docs
+          .map((d) => (d.data()['studentID'] as String? ?? '').toUpperCase())
+          .toSet();
+
+      // Create missing studentFees in batches of 500
+      final missing = <Map<String, dynamic>>[];
+      for (final doc in studentsSnap.docs) {
+        final data  = doc.data();
+        final sid   = (data['studentID'] as String? ?? '').toUpperCase();
+        if (sid.isEmpty || existingIds.contains(sid)) continue;
+
+        final semester = data['semester'] as String? ?? 'Semester 2, 2025/2026';
+        missing.add({
+          'studentID':       sid,
+          'semester':        semester,
+          'educationFee':    1500.0,
+          'hostelFee':       800.0,
+          'otherFee':        150.0,
+          'totalAmount':     2450.0,
+          'paidAmount':      0.0,
+          'paymentStatus':   'outstanding',
+          'isBlocked':       false,
+          'deadlineOverdue': false,
+          'paymentDeadline': 'Week 5',
+          'createdAt':       FieldValue.serverTimestamp(),
+        });
+      }
+
+      // Write in batches of 500 (Firestore limit)
+      for (var i = 0; i < missing.length; i += 500) {
+        final chunk = missing.sublist(i, (i + 500).clamp(0, missing.length));
+        final batch = _db.batch();
+        for (final fee in chunk) {
+          batch.set(_db.collection('studentFees').doc(), fee);
+        }
+        await batch.commit();
+      }
+
+      _seededCount = missing.length;
+
+      // Reload to reflect new data
+      await loadAllStudents();
+    } catch (e) {
+      _errorMessage = 'Seed failed: $e';
+    }
+    _isSeeding = false;
     notifyListeners();
   }
 
