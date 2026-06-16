@@ -16,6 +16,7 @@ class FirebaseSeedService {
     final snap = await _db.collection('registrars').limit(1).get();
     if (snap.docs.isEmpty) await _seedAll();
     await _migrateStudentIDs();
+    await _seedAttendanceIfNeeded();
   }
 
   // Migrates existing student docs: copies matricId value into studentID,
@@ -145,53 +146,61 @@ class FirebaseSeedService {
   void _addModules(WriteBatch batch) {
     final modules = [
       {
-        'moduleID': 'MOD001',
+        'moduleId': 'MOD001',
         'title': 'Bengkel Kepimpinan UTM',
-        'date': '15/05/2026',
-        'startTime': '08:00',
-        'endTime': '17:00',
+        'date': '15 May 2026',
+        'startTime': '8:00 AM',
+        'endTime': '5:00 PM',
         'venue': 'Dewan Utama UTM',
         'maxParticipants': 100,
         'registeredCount': 45,
-        'lecturerID': 'LE210145',
+        'lecturerId': 'LE210145',
+        'lecturer': 'Dr. Hafiz bin Abdullah',
+        'code': '',
       },
       {
-        'moduleID': 'MOD002',
+        'moduleId': 'MOD002',
         'title': 'Pertandingan Sukan Antara Kolej',
-        'date': '20/05/2026',
-        'startTime': '09:00',
-        'endTime': '18:00',
+        'date': '20 May 2026',
+        'startTime': '9:00 AM',
+        'endTime': '6:00 PM',
         'venue': 'Stadium UTM',
         'maxParticipants': 200,
         'registeredCount': 120,
-        'lecturerID': 'LE210145',
+        'lecturerId': 'LE210145',
+        'lecturer': 'Dr. Hafiz bin Abdullah',
+        'code': '',
       },
       {
-        'moduleID': 'MOD003',
+        'moduleId': 'MOD003',
         'title': 'Program Khidmat Masyarakat',
-        'date': '25/05/2026',
-        'startTime': '08:00',
-        'endTime': '13:00',
+        'date': '25 May 2026',
+        'startTime': '8:00 AM',
+        'endTime': '1:00 PM',
         'venue': 'Taman Perumahan Skudai',
         'maxParticipants': 50,
         'registeredCount': 38,
-        'lecturerID': 'LE210145',
+        'lecturerId': 'LE210145',
+        'lecturer': 'Dr. Hafiz bin Abdullah',
+        'code': '',
       },
       {
-        'moduleID': 'MOD004',
+        'moduleId': 'MOD004',
         'title': 'Seminar Inovasi Pelajar',
-        'date': '10/06/2026',
-        'startTime': '09:00',
-        'endTime': '16:00',
+        'date': '10 Jun 2026',
+        'startTime': '9:00 AM',
+        'endTime': '4:00 PM',
         'venue': 'Bilik Seminar FKOM',
         'maxParticipants': 80,
         'registeredCount': 55,
-        'lecturerID': 'LE210145',
+        'lecturerId': 'LE210145',
+        'lecturer': 'Dr. Hafiz bin Abdullah',
+        'code': '',
       },
     ];
     for (final m in modules) {
       batch.set(
-        _db.collection('modules').doc(m['moduleID'] as String),
+        _db.collection('modules').doc(m['moduleId'] as String),
         m,
       );
     }
@@ -535,6 +544,75 @@ class FirebaseSeedService {
     for (final entry in courseData.entries) {
       await _db.collection('courses').doc(entry.key).update(entry.value);
     }
+  }
+
+  // Seeds attendance records for the 3 seeded claim students.
+  // Runs independently so it works even if the main seed already ran.
+  Future<void> _seedAttendanceIfNeeded() async {
+    final snap = await _db.collection('attendance').doc('ATT001').get();
+    if (snap.exists) return;
+    final batch = _db.batch();
+    _addAttendance(batch);
+    await batch.commit();
+  }
+
+  void _addAttendance(WriteBatch batch) {
+    // Ahmad Faiz — attended 2 modules (matches CLM001 + CLM004)
+    batch.set(_db.collection('attendance').doc('ATT001'), {
+      'studentName': 'Ahmad Faiz bin Abdullah',
+      'matricNumber': 'CD21145',
+      'programme': 'Bachelor of Computer Science (Software Engineering)',
+      'totalRegistered': 2,
+      'totalAttended': 2,
+      'records': [
+        {
+          'moduleName': 'Bengkel Kepimpinan UTM',
+          'date': '15/05/2026',
+          'checkInTime': '8:15 AM',
+          'isPresent': true,
+        },
+        {
+          'moduleName': 'Seminar Inovasi Pelajar',
+          'date': '10/06/2026',
+          'checkInTime': '9:05 AM',
+          'isPresent': true,
+        },
+      ],
+    });
+
+    // Amalin Aisyah — attended 1 module (matches CLM002)
+    batch.set(_db.collection('attendance').doc('ATT002'), {
+      'studentName': 'Amalin Aisyah binti Aziz',
+      'matricNumber': 'CD21100',
+      'programme': 'Bachelor of Computer Science (Software Engineering)',
+      'totalRegistered': 1,
+      'totalAttended': 1,
+      'records': [
+        {
+          'moduleName': 'Pertandingan Sukan Antara Kolej',
+          'date': '20/05/2026',
+          'checkInTime': '9:10 AM',
+          'isPresent': true,
+        },
+      ],
+    });
+
+    // Adani — attended 1 module (matches CLM003)
+    batch.set(_db.collection('attendance').doc('ATT003'), {
+      'studentName': 'Adani binti Mohd Fadzil',
+      'matricNumber': 'CD21079',
+      'programme': 'Bachelor of Computer Science (Software Engineering)',
+      'totalRegistered': 1,
+      'totalAttended': 1,
+      'records': [
+        {
+          'moduleName': 'Program Khidmat Masyarakat',
+          'date': '25/05/2026',
+          'checkInTime': '8:30 AM',
+          'isPresent': true,
+        },
+      ],
+    });
   }
 
   Future<void> _updateEnrollments() async {

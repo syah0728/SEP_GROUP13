@@ -21,11 +21,31 @@ class FirebaseService {
             .toList());
   }
 
-  // Returns the auto-generated attendance code for sharing with students.
+  // Returns the attendance code. Uses moduleId as the Firestore document ID
+  // so all module docs are consistently named MOD001, MOD002, etc.
   Future<String> addModule(ModuleModel module) async {
     final code = _generateActivityCode();
-    await db.collection('modules').add({...module.toMap(), 'code': code});
+    final moduleId = await _generateNextModuleId();
+    await db.collection('modules').doc(moduleId).set({
+      ...module.toMap(),
+      'moduleId': moduleId,
+      'code': code,
+    });
     return code;
+  }
+
+  // Finds the highest existing MOD number and returns the next one.
+  Future<String> _generateNextModuleId() async {
+    final snap = await db.collection('modules').get();
+    int maxNum = 0;
+    for (final doc in snap.docs) {
+      final id = doc.id;
+      if (id.startsWith('MOD')) {
+        final n = int.tryParse(id.substring(3)) ?? 0;
+        if (n > maxNum) maxNum = n;
+      }
+    }
+    return 'MOD${(maxNum + 1).toString().padLeft(3, '0')}';
   }
 
   Future<void> updateModule(ModuleModel module) async {
@@ -172,18 +192,124 @@ class FirebaseService {
     };
   }
 
+  // Returns full attended records [{moduleName, date, checkInTime}] for a student (isPresent=true).
+  Future<List<Map<String, dynamic>>> getAttendedModuleRecords(String matricNumber) async {
+    final snap = await db
+        .collection('attendance')
+        .where('matricNumber', isEqualTo: matricNumber)
+        .limit(1)
+        .get();
+    if (snap.docs.isEmpty) return [];
+    final records = List<Map<String, dynamic>>.from(
+        snap.docs.first.data()['records'] ?? []);
+    return records
+        .where((r) => r['isPresent'] == true)
+        .map<Map<String, dynamic>>((r) => {
+              'moduleName': r['moduleName'] as String,
+              'date': r['date'] as String,
+              'checkInTime': (r['checkInTime'] as String?) ?? '',
+            })
+        .toList();
+  }
+
+  // Returns the set of module titles the student has attended (isPresent=true).
+  Future<Set<String>> getAttendedModuleNames(String matricNumber) async {
+    final snap = await db
+        .collection('attendance')
+        .where('matricNumber', isEqualTo: matricNumber)
+        .limit(1)
+        .get();
+    if (snap.docs.isEmpty) return {};
+    final records = List<Map<String, dynamic>>.from(
+        snap.docs.first.data()['records'] ?? []);
+    return records
+        .where((r) => r['isPresent'] == true)
+        .map<String>((r) => r['moduleName'] as String)
+        .toSet();
+  }
+
+  // ---------- REGISTRATIONS ----------
+
+  Future<void> registerForModule({
+    required String matricNumber,
+    required String studentName,
+    required String moduleName,
+    required String moduleDate,
+  }) async {
+    final snap = await db
+        .collection('registrations')
+        .where('matricNumber', isEqualTo: matricNumber)
+        .limit(1)
+        .get();
+    if (snap.docs.isNotEmpty) {
+      final doc = snap.docs.first;
+      final modules =
+          List<Map<String, dynamic>>.from(doc.data()['modules'] ?? []);
+      if (modules.any((m) => m['moduleName'] == moduleName)) return;
+      modules.add({
+        'moduleName': moduleName,
+        'date': moduleDate,
+        'registeredAt': DateTime.now().toIso8601String(),
+      });
+      await db
+          .collection('registrations')
+          .doc(doc.id)
+          .update({'modules': modules});
+    } else {
+      await db.collection('registrations').add({
+        'matricNumber': matricNumber,
+        'studentName': studentName,
+        'modules': [
+          {
+            'moduleName': moduleName,
+            'date': moduleDate,
+            'registeredAt': DateTime.now().toIso8601String(),
+          }
+        ],
+      });
+    }
+  }
+
+  Future<Set<String>> getRegisteredModuleNames(String matricNumber) async {
+    final snap = await db
+        .collection('registrations')
+        .where('matricNumber', isEqualTo: matricNumber)
+        .limit(1)
+        .get();
+    if (snap.docs.isEmpty) return {};
+    final modules = List<Map<String, dynamic>>.from(
+        snap.docs.first.data()['modules'] ?? []);
+    return modules.map<String>((m) => m['moduleName'] as String).toSet();
+  }
+
+  Future<List<Map<String, dynamic>>> getRegisteredModuleRecords(
+      String matricNumber) async {
+    final snap = await db
+        .collection('registrations')
+        .where('matricNumber', isEqualTo: matricNumber)
+        .limit(1)
+        .get();
+    if (snap.docs.isEmpty) return [];
+    final modules = List<Map<String, dynamic>>.from(
+        snap.docs.first.data()['modules'] ?? []);
+    return modules
+        .map<Map<String, dynamic>>((m) => {
+              'moduleName': m['moduleName'] as String,
+              'date': m['date'] as String,
+            })
+        .toList();
+  }
+
   // ---------- SEED DATA ----------
   // Seeds the Kayak / 3D-Printing modules and a sample attendance record.
   // Claims are now seeded by FirebaseSeedService; this only touches modules.
   Future<void> seedSampleData() async {
-    final existing = await db
-        .collection('modules')
-        .where('code', isEqualTo: 'KAYAK1')
-        .limit(1)
-        .get();
-    if (existing.docs.isNotEmpty) return;
+    // Guard: skip if MOD001 already exists as a document
+    final existing = await db.collection('modules').doc('MOD001').get();
+    if (existing.exists) return;
 
-    await db.collection('modules').add({
+    await db.collection('modules').doc('MOD001').set({
+      'moduleId': 'MOD001',
       'title': 'Kayak',
       'date': '5 April 2026',
       'startTime': '8:00 AM',
@@ -195,7 +321,8 @@ class FirebaseService {
       'registeredCount': 45,
       'code': 'KAYAK1',
     });
-    await db.collection('modules').add({
+    await db.collection('modules').doc('MOD002').set({
+      'moduleId': 'MOD002',
       'title': '3D Printing',
       'date': '10 April 2026',
       'startTime': '8:00 AM',
@@ -227,6 +354,62 @@ class FirebaseService {
         ],
       });
     }
+  }
+
+  // ---------- MODULE ID MIGRATION ----------
+  // 1. Moves any docs with random Firestore auto-IDs to MOD001-style doc IDs.
+  // 2. Backfills missing moduleId, code, and lecturer fields on all MOD___ docs.
+  // Safe to call on every app start.
+  Future<void> migrateModuleIdsIfNeeded() async {
+    final snap = await db.collection('modules').get();
+
+    // Step 1: move random-ID docs to MOD___ IDs
+    final randomDocs = snap.docs.where((d) => !d.id.startsWith('MOD')).toList();
+    int maxNum = 0;
+    for (final doc in snap.docs) {
+      if (doc.id.startsWith('MOD')) {
+        final n = int.tryParse(doc.id.substring(3)) ?? 0;
+        if (n > maxNum) maxNum = n;
+      }
+    }
+    if (randomDocs.isNotEmpty) {
+      final batch = db.batch();
+      int counter = maxNum + 1;
+      for (final oldDoc in randomDocs) {
+        final newId = 'MOD${counter.toString().padLeft(3, '0')}';
+        batch.set(db.collection('modules').doc(newId),
+            {...oldDoc.data(), 'moduleId': newId});
+        batch.delete(oldDoc.reference);
+        counter++;
+      }
+      await batch.commit();
+    }
+
+    // Step 2: backfill moduleId (lowercase), code, and lecturer on MOD___ docs
+    final allSnap = await db.collection('modules').get();
+    final batch2 = db.batch();
+    bool dirty = false;
+    for (final doc in allSnap.docs) {
+      if (!doc.id.startsWith('MOD')) continue;
+      final data = doc.data();
+      final updates = <String, dynamic>{};
+
+      if (((data['moduleId'] as String?) ?? '').isEmpty) {
+        updates['moduleId'] = doc.id;
+      }
+      if (((data['code'] as String?) ?? '').isEmpty) {
+        updates['code'] = _generateActivityCode();
+      }
+      if (((data['lecturer'] as String?) ?? '').isEmpty) {
+        updates['lecturer'] = 'Assigned Lecturer';
+      }
+
+      if (updates.isNotEmpty) {
+        batch2.update(doc.reference, updates);
+        dirty = true;
+      }
+    }
+    if (dirty) await batch2.commit();
   }
 
   // ---------- CLAIM MIGRATION ----------

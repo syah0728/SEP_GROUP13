@@ -4,7 +4,8 @@
 // This matches the Firestore 'modules' collection.
 
 class ModuleModel {
-  final String id;             // Firestore document ID (= moduleID PK)
+  final String id;             // Firestore document ID (auto-generated)
+  final String moduleId;       // Human-readable ID: MOD001, MOD002, …
   final String title;
   final String date;
   final String startTime;
@@ -14,10 +15,11 @@ class ModuleModel {
   final String venue;
   final int maxParticipants;
   final int registeredCount;
-  final String code;           // 6-char attendance code shared with students
+  final String code;           // 6-char attendance code shared with students on the day
 
   ModuleModel({
     required this.id,
+    this.moduleId = '',
     required this.title,
     required this.date,
     required this.startTime,
@@ -33,6 +35,7 @@ class ModuleModel {
   factory ModuleModel.fromMap(String id, Map<String, dynamic> data) {
     return ModuleModel(
       id: id,
+      moduleId: data['moduleId'] ?? '',
       title: data['title'] ?? '',
       date: data['date'] ?? '',
       startTime: data['startTime'] ?? '8:00 AM',
@@ -48,6 +51,7 @@ class ModuleModel {
 
   Map<String, dynamic> toMap() {
     return {
+      'moduleId': moduleId,
       'title': title,
       'date': date,
       'startTime': startTime,

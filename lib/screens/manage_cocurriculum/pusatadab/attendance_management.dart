@@ -3,6 +3,9 @@
 // Theme: orange (AppColors.primary) header + white body.
 
 import 'package:flutter/material.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 import '../../../services/firebase_services.dart';
 import '../../../models/manage_cocurriculum/attendance.dart';
 import '../../../widgets/adab_sidebar.dart';
@@ -27,6 +30,106 @@ class AttendanceManagementScreenState
   void initState() {
     super.initState();
     service.seedSampleData();
+  }
+
+  Future<void> _exportAttendanceReport() async {
+    try {
+      final students = await service.getAttendance().first;
+
+      final doc = pw.Document();
+      final now = DateTime.now();
+      final dateStr =
+          '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+
+      doc.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(32),
+          build: (context) => [
+            pw.Text(
+              'Co-Curriculum Attendance Report',
+              style: pw.TextStyle(
+                  fontSize: 20, fontWeight: pw.FontWeight.bold),
+            ),
+            pw.SizedBox(height: 4),
+            pw.Text('Generated: $dateStr',
+                style: const pw.TextStyle(fontSize: 10)),
+            pw.SizedBox(height: 20),
+            pw.TableHelper.fromTextArray(
+              headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+              headerDecoration:
+                  const pw.BoxDecoration(color: PdfColors.orange200),
+              cellAlignment: pw.Alignment.centerLeft,
+              cellPadding: const pw.EdgeInsets.symmetric(
+                  horizontal: 6, vertical: 4),
+              headers: [
+                'No.',
+                'Student Name',
+                'Matric No.',
+                'Programme',
+                'Attended',
+                'Total',
+                'Rate',
+              ],
+              data: students.asMap().entries.map((entry) {
+                final i = entry.key;
+                final s = entry.value;
+                return [
+                  '${i + 1}',
+                  s.studentName,
+                  s.matricNumber,
+                  s.programme,
+                  '${s.totalAttended}',
+                  '${s.totalRegistered}',
+                  '${s.attendanceRate.toInt()}%',
+                ];
+              }).toList(),
+            ),
+            pw.SizedBox(height: 24),
+            pw.Text('Detailed Records',
+                style: pw.TextStyle(
+                    fontSize: 14, fontWeight: pw.FontWeight.bold)),
+            pw.SizedBox(height: 8),
+            for (final s in students) ...[
+              pw.Text(
+                '${s.studentName} (${s.matricNumber})',
+                style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+              ),
+              pw.SizedBox(height: 4),
+              pw.TableHelper.fromTextArray(
+                headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                cellPadding: const pw.EdgeInsets.symmetric(
+                    horizontal: 6, vertical: 3),
+                headers: ['Module', 'Date', 'Check-In Time', 'Status'],
+                data: s.records
+                    .map((r) => [
+                          r.moduleName,
+                          r.date,
+                          r.checkInTime,
+                          r.isPresent ? 'Present' : 'Absent',
+                        ])
+                    .toList(),
+              ),
+              pw.SizedBox(height: 12),
+            ],
+          ],
+        ),
+      );
+
+      await Printing.sharePdf(
+        bytes: await doc.save(),
+        filename: 'attendance_report_$dateStr.pdf',
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Export failed: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -129,12 +232,7 @@ class AttendanceManagementScreenState
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     OutlinedButton.icon(
-                      onPressed: () =>
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text("Export feature coming soon"),
-                            ),
-                          ),
+                      onPressed: _exportAttendanceReport,
                       icon: const Icon(Icons.download),
                       label: const Text("Export Attendance Report"),
                     ),

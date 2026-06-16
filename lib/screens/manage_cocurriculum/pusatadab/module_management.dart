@@ -24,7 +24,7 @@ class ModuleManagementPageState extends State<ModuleManagementPage> {
   @override
   void initState() {
     super.initState();
-    service.seedSampleData();
+    service.seedSampleData().then((_) => service.migrateModuleIdsIfNeeded());
   }
 
   Future<void> deleteModule(String id, String title) async {
@@ -197,13 +197,40 @@ class ModuleManagementPageState extends State<ModuleManagementPage> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  m.title,
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFF1E2939),
-                                  ),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        m.title,
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                          color: Color(0xFF1E2939),
+                                        ),
+                                      ),
+                                    ),
+                                    if (m.moduleId.isNotEmpty)
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 8, vertical: 3),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFF3F4F6),
+                                          borderRadius: BorderRadius.circular(6),
+                                          border: Border.all(
+                                              color: const Color(0xFFD1D5DB)),
+                                        ),
+                                        child: Text(
+                                          m.moduleId,
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                            color: Color(0xFF4A5565),
+                                            letterSpacing: 1,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
                                 ),
                                 const SizedBox(height: 12),
                                 _row(Icons.calendar_today, m.date),
@@ -451,9 +478,11 @@ class EditModulePageState extends State<EditModulePage> {
       startTime: startTime.format(context),
       endTime: endTime.format(context),
       lecturer: lecturerController.text,
+      lecturerId: widget.module.lecturerId,
       venue: venueController.text,
       maxParticipants: int.parse(maxController.text),
       registeredCount: int.parse(registeredController.text),
+      code: widget.module.code,
     );
     await service.updateModule(updated);
     if (mounted) {
@@ -495,28 +524,28 @@ class EditModulePageState extends State<EditModulePage> {
                 validator: (v) => v == null || v.isEmpty ? "Required" : null,
               ),
               const SizedBox(height: 12),
+              // Date picker — full width
+              OutlinedButton.icon(
+                onPressed: () async {
+                  final p = await showDatePicker(
+                    context: context,
+                    initialDate: date,
+                    firstDate: DateTime.now(),
+                    lastDate: DateTime.now().add(const Duration(days: 365)),
+                  );
+                  if (p != null) setState(() => date = p);
+                },
+                icon: const Icon(Icons.calendar_today),
+                label: Text(
+                    "${date.day} ${_monthName(date.month)} ${date.year}"),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 48),
+                ),
+              ),
+              const SizedBox(height: 12),
+              // Start & end time — side by side
               Row(
                 children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () async {
-                        final p = await showDatePicker(
-                          context: context,
-                          initialDate: date,
-                          firstDate: DateTime.now(),
-                          lastDate: DateTime.now().add(
-                            const Duration(days: 365),
-                          ),
-                        );
-                        if (p != null) setState(() => date = p);
-                      },
-                      icon: const Icon(Icons.calendar_today),
-                      label: Text(
-                        "${date.day} ${_monthName(date.month)} ${date.year}",
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
                   Expanded(
                     child: OutlinedButton.icon(
                       onPressed: () async {
@@ -530,7 +559,11 @@ class EditModulePageState extends State<EditModulePage> {
                       label: Text(startTime.format(context)),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 8),
+                    child: Icon(Icons.arrow_forward,
+                        size: 16, color: Colors.grey),
+                  ),
                   Expanded(
                     child: OutlinedButton.icon(
                       onPressed: () async {
