@@ -444,7 +444,9 @@ class _StudentCard extends StatelessWidget {
         : 0.0;
     final lastPayStr = student.lastPayment != null
         ? 'Last payment: ${DateFormat('d MMMM yyyy').format(student.lastPayment!)}'
-        : 'No payment yet';
+        : student.paid > 0
+            ? 'Payment recorded'
+            : 'No payment yet';
 
     return Container(
       decoration: ShapeDecoration(

@@ -77,8 +77,16 @@ class _StudentFinancialPageState extends State<StudentFinancialPage> {
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
-                  // Warning banner — only when outstanding > 0
-                  if (data.totalOutstanding > 0) ...[
+                  // Blocked access banner — highest priority
+                  if (data.isBlocked) ...[
+                    _BlockedBanner(
+                      isManualBlock: data.totalOutstanding <= 0,
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+
+                  // Warning banner — only when outstanding > 0 and not yet blocked
+                  if (data.totalOutstanding > 0 && !data.isBlocked) ...[
                     _PaymentBanner(
                       isOverdue: data.deadlineOverdue,
                       deadline: data.paymentDeadline,
@@ -166,6 +174,55 @@ class _StudentFinancialPageState extends State<StudentFinancialPage> {
                 ],
               ),
             ),
+    );
+  }
+}
+
+// ── Account Blocked banner ────────────────────────────────────
+class _BlockedBanner extends StatelessWidget {
+  final bool isManualBlock;
+  const _BlockedBanner({required this.isManualBlock});
+
+  @override
+  Widget build(BuildContext context) {
+    final msg = isManualBlock
+        ? 'Your account has been blocked by the treasury office. Please contact the treasury for assistance.'
+        : 'Your account is blocked due to outstanding fees past the payment deadline. Pay now to restore access to other modules.';
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF4A0000),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: kRed),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.lock_outline, color: Colors.white, size: 20),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Account Access Blocked',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  msg,
+                  style: const TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

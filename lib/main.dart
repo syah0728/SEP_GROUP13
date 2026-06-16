@@ -109,7 +109,7 @@ class AttendanceApp extends StatelessWidget {
 
           // Student routes — Module 3: Financial
           '/student/financial': (context) =>
-              const StudentFinancialPage(studentId: 'A20CS1001'),
+              StudentFinancialPage(studentId: AppSession.matricId),
 
           // Treasury routes — Module 3: Financial
           '/treasury/dashboard': (context) => const TreasuryDashboardView(),

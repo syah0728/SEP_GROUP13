@@ -152,13 +152,25 @@ class _TreasuryStudentDetailViewState
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 10, vertical: 4),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFFFFF3E0),
+                                    color: student.status == 'paid'
+                                        ? const Color(0xFFDCFCE7)
+                                        : student.status == 'partial'
+                                            ? const Color(0xFFFFF3E0)
+                                            : const Color(0xFFFEF2F2),
                                     borderRadius: BorderRadius.circular(6),
                                   ),
-                                  child: const Text(
-                                    'Pending',
+                                  child: Text(
+                                    student.status == 'paid'
+                                        ? 'Paid'
+                                        : student.status == 'partial'
+                                            ? 'Partial'
+                                            : 'Outstanding',
                                     style: TextStyle(
-                                      color: Color(0xFFE65100),
+                                      color: student.status == 'paid'
+                                          ? _kGreen
+                                          : student.status == 'partial'
+                                              ? const Color(0xFFE65100)
+                                              : _kRed,
                                       fontSize: 12,
                                       fontFamily: 'Inter',
                                       fontWeight: FontWeight.w600,

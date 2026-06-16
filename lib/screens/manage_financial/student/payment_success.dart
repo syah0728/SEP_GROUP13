@@ -79,7 +79,10 @@ class StudentPaymentSuccessPage extends StatelessWidget {
                 ),
                 onPressed: () {
                   ctrl.resetPaymentFlow();
-                  Navigator.of(context).popUntil((route) => route.isFirst);
+                  Navigator.of(context).pushNamedAndRemoveUntil(
+                    '/student/financial',
+                    (route) => false,
+                  );
                 },
                 child: const Text(
                   'Return to Financial',
