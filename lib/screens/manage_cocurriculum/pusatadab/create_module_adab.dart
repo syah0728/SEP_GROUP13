@@ -133,18 +133,20 @@ class CreateModuleAdabState extends State<CreateModuleAdab> {
                 validator: (v) => v == null || v.isEmpty ? "Required" : null,
               ),
               const SizedBox(height: 16),
-              // Date and time pickers in a row
+              // Date picker — full width
+              OutlinedButton.icon(
+                onPressed: pickDate,
+                icon: const Icon(Icons.calendar_today),
+                label: Text(
+                    "${selectedDate.day} ${_month(selectedDate.month)} ${selectedDate.year}"),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 48),
+                ),
+              ),
+              const SizedBox(height: 12),
+              // Start & end time — side by side
               Row(
                 children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: pickDate,
-                      icon: const Icon(Icons.calendar_today),
-                      label: Text(
-                          "${selectedDate.day} ${_month(selectedDate.month)} ${selectedDate.year}"),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
                   Expanded(
                     child: OutlinedButton.icon(
                       onPressed: pickStartTime,
@@ -152,7 +154,10 @@ class CreateModuleAdabState extends State<CreateModuleAdab> {
                       label: Text(startTime.format(context)),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 8),
+                    child: Icon(Icons.arrow_forward, size: 16, color: Colors.grey),
+                  ),
                   Expanded(
                     child: OutlinedButton.icon(
                       onPressed: pickEndTime,

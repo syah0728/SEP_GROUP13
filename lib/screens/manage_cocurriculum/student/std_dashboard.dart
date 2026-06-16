@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../services/session_service.dart';
+import '../../../services/firebase_services.dart';
 import '../../../widgets/module_card.dart';
 import '../../../widgets/std_sidebar.dart';
 
@@ -12,19 +13,40 @@ class StudentDashboard extends StatefulWidget {
 
 class _StudentDashboardState extends State<StudentDashboard> {
   final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey();
+  final FirebaseService _service = FirebaseService();
 
   static const Color purplePrimary = Color(0xFFAB43FE);
   static const Color purpleDark = Color(0xFF8B2FD9);
+  static const int _pointsPerModule = 2;
+  static const int _requiredPoints = 8;
 
   String get studentName => AppSession.studentName;
   String get matricNumber => AppSession.matricId;
 
-  final List<Map<String, dynamic>> attendedActivities = const [
-    {'name': 'Blood Donation Campaign', 'date': '5 Mar 2026', 'cats': 2, 'claimed': true},
-    {'name': 'Coding Competition', 'date': '8 Mar 2026', 'cats': 2, 'claimed': true},
-    {'name': 'Badminton Tournament', 'date': '10 Mar 2026', 'cats': 2, 'claimed': true},
-    {'name': 'Cultural Night Festival', 'date': '12 Mar 2026', 'cats': 2, 'claimed': false},
-  ];
+  // [{moduleName, date}] from registrations
+  List<Map<String, dynamic>> _registeredModules = [];
+  // titles of attended modules
+  Set<String> _attendedNames = {};
+  bool _loadingActivities = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadActivities();
+  }
+
+  Future<void> _loadActivities() async {
+    final registered = await _service.getRegisteredModuleRecords(matricNumber);
+    final attended = await _service.getAttendedModuleNames(matricNumber);
+    if (!mounted) return;
+    setState(() {
+      _registeredModules = registered;
+      _attendedNames = attended;
+      _loadingActivities = false;
+    });
+  }
+
+  int get _earnedPoints => _attendedNames.length * _pointsPerModule;
 
   @override
   Widget build(BuildContext context) {
@@ -288,100 +310,118 @@ class _StudentDashboardState extends State<StudentDashboard> {
                               ],
                             ),
                             const SizedBox(height: 12),
-                            ...attendedActivities.take(3).map((activity) {
-                              return Container(
-                                margin: const EdgeInsets.only(bottom: 8),
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: Colors.grey.shade50,
-                                  borderRadius: BorderRadius.circular(8),
+                            if (_loadingActivities)
+                              const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 16),
+                                child: Center(child: CircularProgressIndicator()),
+                              )
+                            else if (_registeredModules.isEmpty)
+                              Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                child: Text(
+                                  'No modules registered yet.',
+                                  style: TextStyle(
+                                      fontSize: 13, color: Colors.grey.shade500),
                                 ),
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            activity['name'] as String,
-                                            style: const TextStyle(
-                                                fontWeight: FontWeight.w500,
-                                                fontSize: 14),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Row(
-                                            children: [
-                                              Text(
-                                                activity['date'] as String,
-                                                style: TextStyle(
-                                                    fontSize: 12,
-                                                    color:
-                                                        Colors.grey.shade600),
-                                              ),
-                                              const SizedBox(width: 12),
-                                              const Icon(Icons.emoji_events,
-                                                  size: 12,
-                                                  color: purplePrimary),
-                                              const SizedBox(width: 4),
-                                              Text(
-                                                '${activity['cats']} CATS',
-                                                style: const TextStyle(
-                                                    fontSize: 12,
-                                                    color: purplePrimary,
-                                                    fontWeight:
-                                                        FontWeight.w500),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    if (activity['claimed'] as bool)
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 8, vertical: 4),
-                                        decoration: BoxDecoration(
-                                          color: Colors.green.shade100,
-                                          borderRadius:
-                                              BorderRadius.circular(4),
-                                        ),
-                                        child: const Row(
-                                          mainAxisSize: MainAxisSize.min,
+                              )
+                            else
+                              ..._registeredModules.take(3).map((m) {
+                                final name = m['moduleName'] as String;
+                                final date = m['date'] as String;
+                                final isAttended = _attendedNames.contains(name);
+                                return Container(
+                                  margin: const EdgeInsets.only(bottom: 8),
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey.shade50,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
-                                            Icon(Icons.check_circle,
-                                                size: 12,
-                                                color: Colors.green),
-                                            SizedBox(width: 4),
                                             Text(
-                                              'Claimed',
-                                              style: TextStyle(
-                                                  fontSize: 12,
-                                                  color: Colors.green,
-                                                  fontWeight:
-                                                      FontWeight.w500),
+                                              name,
+                                              style: const TextStyle(
+                                                  fontWeight: FontWeight.w500,
+                                                  fontSize: 14),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Row(
+                                              children: [
+                                                Text(
+                                                  date,
+                                                  style: TextStyle(
+                                                      fontSize: 12,
+                                                      color: Colors.grey.shade600),
+                                                ),
+                                                if (isAttended) ...[
+                                                  const SizedBox(width: 12),
+                                                  const Icon(Icons.emoji_events,
+                                                      size: 12,
+                                                      color: purplePrimary),
+                                                  const SizedBox(width: 4),
+                                                  const Text(
+                                                    '$_pointsPerModule CATS',
+                                                    style: TextStyle(
+                                                        fontSize: 12,
+                                                        color: purplePrimary,
+                                                        fontWeight:
+                                                            FontWeight.w500),
+                                                  ),
+                                                ],
+                                              ],
                                             ),
                                           ],
                                         ),
-                                      )
-                                    else
-                                      ElevatedButton(
-                                        onPressed: () =>
-                                            Navigator.pushReplacementNamed(
-                                                context, '/student/claim'),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: purplePrimary,
-                                          foregroundColor: Colors.white,
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 12, vertical: 4),
-                                        ),
-                                        child: const Text('Claim',
-                                            style: TextStyle(fontSize: 12)),
                                       ),
-                                  ],
-                                ),
-                              );
-                            }),
+                                      if (isAttended)
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 8, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: Colors.green.shade100,
+                                            borderRadius:
+                                                BorderRadius.circular(4),
+                                          ),
+                                          child: const Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(Icons.check_circle,
+                                                  size: 12,
+                                                  color: Colors.green),
+                                              SizedBox(width: 4),
+                                              Text(
+                                                'Attended',
+                                                style: TextStyle(
+                                                    fontSize: 12,
+                                                    color: Colors.green,
+                                                    fontWeight: FontWeight.w500),
+                                              ),
+                                            ],
+                                          ),
+                                        )
+                                      else
+                                        ElevatedButton(
+                                          onPressed: () =>
+                                              Navigator.pushReplacementNamed(
+                                                  context, '/student/checkin'),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.orange,
+                                            foregroundColor: Colors.white,
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 12, vertical: 4),
+                                          ),
+                                          child: const Text('Check In',
+                                              style: TextStyle(fontSize: 12)),
+                                        ),
+                                    ],
+                                  ),
+                                );
+                              }),
                           ],
                         ),
                       ),
@@ -418,21 +458,21 @@ class _StudentDashboardState extends State<StudentDashboard> {
                                     ],
                                   ),
                                   const SizedBox(height: 8),
-                                  const Text(
-                                    '6/8',
-                                    style: TextStyle(
+                                  Text(
+                                    '$_earnedPoints/$_requiredPoints',
+                                    style: const TextStyle(
                                         fontSize: 28,
                                         fontWeight: FontWeight.bold),
                                   ),
-                                  const Text(
-                                    '3 activities attended',
-                                    style: TextStyle(
+                                  Text(
+                                    '${_attendedNames.length} ${_attendedNames.length == 1 ? 'activity' : 'activities'} attended',
+                                    style: const TextStyle(
                                         fontSize: 12, color: Colors.grey),
                                   ),
                                   const SizedBox(height: 8),
-                                  const LinearProgressIndicator(
-                                    value: 6 / 8,
-                                    backgroundColor: Color(0xFFE5E7EB),
+                                  LinearProgressIndicator(
+                                    value: (_earnedPoints / _requiredPoints).clamp(0.0, 1.0),
+                                    backgroundColor: const Color(0xFFE5E7EB),
                                     color: purplePrimary,
                                   ),
                                 ],

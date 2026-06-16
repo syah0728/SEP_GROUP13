@@ -22,11 +22,24 @@ class AttendanceCheckInState extends State<AttendanceCheckIn> {
   bool isCheckingIn = false;
   bool gpsEnabled = false;
   String activeTab = 'classes'; // 'classes' or 'activities'
+  List<Map<String, dynamic>> _recentAttended = [];
+  bool _loadingRecent = true;
 
   @override
   void initState() {
     super.initState();
     checkGPS();
+    _loadRecentAttendance();
+  }
+
+  Future<void> _loadRecentAttendance() async {
+    final records =
+        await _service.getAttendedModuleRecords(AppSession.matricId);
+    if (!mounted) return;
+    setState(() {
+      _recentAttended = records;
+      _loadingRecent = false;
+    });
   }
 
   @override
@@ -609,26 +622,32 @@ class AttendanceCheckInState extends State<AttendanceCheckIn> {
             ),
             const SizedBox(height: 16),
 
-            // Recent Attendance
+            // Recent Co-Curriculum Attendance
             const Text(
-              'Recent Attendance',
+              'Recent Co-Curriculum Attendance',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
-            buildAttendanceRecord(
-              'Blood Donation Campaign',
-              '10 March 2026 • 8:00 AM',
-              'Main Hall',
-              'present',
-              2,
-            ),
-            buildAttendanceRecord(
-              'Cultural Night Festival',
-              '15 March 2026 • 6:00 PM',
-              'Open Theater',
-              'present',
-              2,
-            ),
+            if (_loadingRecent)
+              const Center(child: CircularProgressIndicator())
+            else if (_recentAttended.isEmpty)
+              Text(
+                'No co-curriculum attendance recorded yet.',
+                style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+              )
+            else
+              ..._recentAttended.map((r) {
+                final checkIn = r['checkInTime'] as String;
+                final datetime =
+                    '${r['date']}${checkIn.isNotEmpty ? ' • $checkIn' : ''}';
+                return buildAttendanceRecord(
+                  r['moduleName'] as String,
+                  datetime,
+                  '',
+                  'present',
+                  2,
+                );
+              }),
           ],
         ),
       ),

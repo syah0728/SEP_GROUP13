@@ -18,9 +18,9 @@ class CoCurriculumModulesScreenState extends State<CoCurriculumModulesScreen> {
   String get studentName => AppSession.studentName;
   String get matricNumber => AppSession.matricId;
 
-  // Studentâ€™s registered & attended modules (demo data)
-  final Set<String> registeredModuleIds = {"Kayak", "3D Printing"};
-  final Set<String> attendedModuleIds = {"Kayak", "3D Printing", "Memanah"};
+  Set<String> registeredModuleIds = {};
+  Set<String> attendedModuleIds = {};
+  String _searchQuery = '';
 
   // Purple color
   static const Color purplePrimary = Color(0xFFAB43FE);
@@ -29,13 +29,31 @@ class CoCurriculumModulesScreenState extends State<CoCurriculumModulesScreen> {
   @override
   void initState() {
     super.initState();
-    service.seedSampleData();
+    service.seedSampleData()
+        .then((_) => service.migrateModuleIdsIfNeeded())
+        .then((_) => _loadModuleStatus());
   }
 
-  void registerModule(ModuleModel module) {
+  Future<void> _loadModuleStatus() async {
+    final registered = await service.getRegisteredModuleNames(matricNumber);
+    final attended = await service.getAttendedModuleNames(matricNumber);
+    if (!mounted) return;
     setState(() {
-      registeredModuleIds.add(module.title);
+      registeredModuleIds = registered;
+      attendedModuleIds = attended;
+      registeredModuleIds.addAll(attended);
     });
+  }
+
+  Future<void> registerModule(ModuleModel module) async {
+    setState(() => registeredModuleIds.add(module.title));
+    await service.registerForModule(
+      matricNumber: matricNumber,
+      studentName: studentName,
+      moduleName: module.title,
+      moduleDate: module.date,
+    );
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Registered for ${module.title}')),
     );
@@ -108,11 +126,11 @@ class CoCurriculumModulesScreenState extends State<CoCurriculumModulesScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text("Credit Claim Eligible âœ“",
+                          Text("Credit Claim Eligible",
                               style: TextStyle(
                                   fontWeight: FontWeight.bold, fontSize: 16)),
                           Text(
-                              "You have joined 4+ activities and can now claim credits!",
+                              "You will be elligible to claim credit if you join 4+ modules!",
                               style: TextStyle(fontSize: 14)),
                         ],
                       ),
@@ -138,6 +156,8 @@ class CoCurriculumModulesScreenState extends State<CoCurriculumModulesScreen> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: TextField(
+                  onChanged: (value) =>
+                      setState(() => _searchQuery = value.toLowerCase()),
                   decoration: InputDecoration(
                     hintText: "Search activities...",
                     prefixIcon: const Icon(Icons.search),
@@ -155,7 +175,11 @@ class CoCurriculumModulesScreenState extends State<CoCurriculumModulesScreen> {
                     if (!snapshot.hasData) {
                       return const Center(child: CircularProgressIndicator());
                     }
-                    final modules = snapshot.data!;
+                    final modules = snapshot.data!
+                        .where((m) => m.title
+                            .toLowerCase()
+                            .contains(_searchQuery))
+                        .toList();
                     return ListView.builder(
                       padding: const EdgeInsets.all(16),
                       itemCount: modules.length,
@@ -165,11 +189,11 @@ class CoCurriculumModulesScreenState extends State<CoCurriculumModulesScreen> {
                             registeredModuleIds.contains(m.title);
                         final isAttended = attendedModuleIds.contains(m.title);
                         String statusText = isAttended
-                            ? "Attended"
+                            ? "Completed"
                             : (isRegistered ? "Registered" : "Available");
                         Color statusColor = isAttended
                             ? Colors.green
-                            : (isRegistered ? Colors.orange : purplePrimary);
+                            : (isRegistered ? Colors.orange : Colors.blue);
                         return Card(
                           margin: const EdgeInsets.only(bottom: 12),
                           shape: RoundedRectangleBorder(
@@ -232,11 +256,20 @@ class CoCurriculumModulesScreenState extends State<CoCurriculumModulesScreen> {
                                     onPressed: () => registerModule(m),
                                     style: ElevatedButton.styleFrom(
                                         backgroundColor: purplePrimary),
-                                    child: const Text("Register"),
+                                    child: const Text("Register",
+                                        style: TextStyle(color: Colors.white)),
                                   ),
                                 if (isRegistered && !isAttended)
-                                  const Text("Attendance not yet recorded",
-                                      style: TextStyle(color: Colors.orange)),
+                                  ElevatedButton(
+                                    onPressed: () {
+                                      Navigator.pushReplacementNamed(
+                                          context, '/student/checkin');
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.blue),
+                                    child: const Text("Enter your attendance",
+                                        style: TextStyle(color: Colors.white)),
+                                  ),
                                 if (isAttended)
                                   const Text("Completed",
                                       style: TextStyle(color: Colors.green)),

@@ -20,34 +20,34 @@ class ClaimCreditScreenState extends State<ClaimCreditScreen> {
 
   static const Color purplePrimary = Color(0xFFAB43FE);
   static const int requiredPoints = 8;
-  static const int pointsPerModule = 2; // each completed module gives 2 CATS
+  static const int pointsPerModule = 2;
 
-  // In a real app, this data would come from Firestore.
-  // For demo, we assume these modules are completed (attended + passed).
-  // Each completed module gives pointsPerModule.
-  final List<Map<String, dynamic>> completedModules = [
-    {'name': 'Memanah', 'date': '15 April 2026', 'points': pointsPerModule},
-    {
-      'name': '3D Design + 3D Printing',
-      'date': '20 April 2026',
-      'points': pointsPerModule
-    },
-    {
-      'name': 'Pengurusan Majlis',
-      'date': '30 April 2026',
-      'points': pointsPerModule
-    },
-    {
-      'name': 'Psychological First Aid',
-      'date': '28 April 2026',
-      'points': pointsPerModule
-    },
-  ];
+  // All modules the student registered for [{moduleName, date}]
+  List<Map<String, dynamic>> registeredModules = [];
+  // Modules confirmed attended via check-in
+  Set<String> attendedModuleNames = {};
+  bool _loading = true;
 
-  int get totalEarnedPoints =>
-      completedModules.fold(0, (sum, m) => sum + (m['points'] as int));
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    final registered = await service.getRegisteredModuleRecords(matricNumber);
+    final attended = await service.getAttendedModuleNames(matricNumber);
+    if (!mounted) return;
+    setState(() {
+      registeredModules = registered;
+      attendedModuleNames = attended;
+      _loading = false;
+    });
+  }
+
+  int get totalEarnedPoints => attendedModuleNames.length * pointsPerModule;
   bool get canSubmit => totalEarnedPoints >= requiredPoints;
-  int get creditsEarned => totalEarnedPoints ~/ 4; // 4 CATS = 1 credit
+  int get creditsEarned => totalEarnedPoints ~/ 4;
 
   Future<void> submitClaim() async {
     if (!canSubmit) return;
@@ -58,7 +58,7 @@ class ClaimCreditScreenState extends State<ClaimCreditScreen> {
       'matricNumber': matricNumber,
       'submittedDate': DateTime.now().toLocal().toString().split(' ')[0],
       'status': 'pending',
-      'modules': completedModules.map((m) => m['name'] as String).toList(),
+      'modules': attendedModuleNames.toList(),
       'marks': 'Auto-approved', // or calculated average
       'grade': 'N/A',
       'rejectReason': '',
@@ -71,8 +71,9 @@ class ClaimCreditScreenState extends State<ClaimCreditScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content:
-                Text('Credit claim submitted successfully! Pending approval.'),
+            content: Text(
+              'Credit claim submitted successfully! Pending approval.',
+            ),
             backgroundColor: Colors.green,
           ),
         );
@@ -82,8 +83,9 @@ class ClaimCreditScreenState extends State<ClaimCreditScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text('Failed to submit claim: $e'),
-              backgroundColor: Colors.red),
+            content: Text('Failed to submit claim: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -98,7 +100,10 @@ class ClaimCreditScreenState extends State<ClaimCreditScreen> {
         studentName: studentName,
         matricNumber: matricNumber,
         onLogout: () => Navigator.pushNamedAndRemoveUntil(
-            context, '/login', (route) => false),
+          context,
+          '/login',
+          (route) => false,
+        ),
       ),
       body: SafeArea(
         child: Container(
@@ -113,209 +118,337 @@ class ClaimCreditScreenState extends State<ClaimCreditScreen> {
                   children: [
                     GestureDetector(
                       onTap: () => scaffoldKey.currentState?.openDrawer(),
-                      child:
-                          const Icon(Icons.menu, color: Colors.white, size: 28),
+                      child: const Icon(
+                        Icons.menu,
+                        color: Colors.white,
+                        size: 28,
+                      ),
                     ),
                     const SizedBox(width: 12),
-                    const Text("Claim Credit",
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold)),
+                    const Text(
+                      "Claim Credit",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ],
                 ),
               ),
               // Main scrollable content
               Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Eligibility badge (changes based on points)
-                      Container(
-                        width: double.infinity,
+                child: _loading
+                    ? const Center(child: CircularProgressIndicator())
+                    : SingleChildScrollView(
                         padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: canSubmit
-                              ? const Color(0xFFE8F5E9)
-                              : const Color(0xFFFFF3E0),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                              color: canSubmit
-                                  ? const Color(0xFFA5D6A7)
-                                  : const Color(0xFFFFCC80)),
-                        ),
-                        child: Row(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Icon(
-                                canSubmit ? Icons.verified : Icons.info_outline,
-                                color: canSubmit ? Colors.green : Colors.orange,
-                                size: 28),
-                            const SizedBox(width: 16),
-                            Expanded(
+                            // CATS Points Progress Card
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: purplePrimary,
+                                borderRadius: BorderRadius.circular(16),
+                              ),
                               child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
-                                    canSubmit
-                                        ? "Ready to Submit! âœ“"
-                                        : "Earn More Points",
-                                    style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
-                                        color: canSubmit
-                                            ? Colors.green
-                                            : Colors.orange),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: const [
+                                      Icon(Icons.emoji_events,
+                                          color: Colors.white, size: 20),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        "CATS Points Progress",
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ],
                                   ),
+                                  const SizedBox(height: 12),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceAround,
+                                    children: [
+                                      Column(
+                                        children: [
+                                          const Text(
+                                            "CATS Earned",
+                                            style: TextStyle(
+                                                fontSize: 13,
+                                                color: Colors.white70),
+                                          ),
+                                          Text(
+                                            "$totalEarnedPoints/$requiredPoints",
+                                            style: const TextStyle(
+                                              fontSize: 28,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      Container(
+                                        width: 1,
+                                        height: 40,
+                                        color: Colors.white30,
+                                      ),
+                                      Column(
+                                        children: [
+                                          const Text(
+                                            "Credits Earned",
+                                            style: TextStyle(
+                                                fontSize: 13,
+                                                color: Colors.white70),
+                                          ),
+                                          Text(
+                                            "$creditsEarned/${requiredPoints ~/ 4}",
+                                            style: const TextStyle(
+                                              fontSize: 28,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  LinearProgressIndicator(
+                                    value: (totalEarnedPoints / requiredPoints)
+                                        .clamp(0.0, 1.0),
+                                    backgroundColor: Colors.white30,
+                                    color: Colors.white,
+                                    minHeight: 8,
+                                  ),
+                                  const SizedBox(height: 8),
                                   Text(
-                                    canSubmit
-                                        ? "You have earned $totalEarnedPoints / $requiredPoints CATS points. You can now submit your credit claim."
-                                        : "You have earned $totalEarnedPoints / $requiredPoints CATS points. Complete more modules to reach $requiredPoints points and claim your credits.",
-                                    style: const TextStyle(fontSize: 14),
+                                    totalEarnedPoints >= requiredPoints
+                                        ? "You have reached the required CATS points!"
+                                        : "${requiredPoints - totalEarnedPoints} CATS points remaining for graduation eligibility",
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.white70,
+                                    ),
                                   ),
                                 ],
                               ),
                             ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      // Completed modules list
-                      const Text("Completed Modules",
-                          style: TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.w600)),
-                      const SizedBox(height: 8),
-                      const Text(
-                          "Automatically awarded CATS points for each passed module.",
-                          style: TextStyle(fontSize: 14, color: Colors.grey)),
-                      const SizedBox(height: 16),
-                      ListView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: completedModules.length,
-                        itemBuilder: (context, index) {
-                          final module = completedModules[index];
-                          return Card(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
-                            child: Padding(
+                            const SizedBox(height: 16),
+                            // Eligibility badge
+                            Container(
+                              width: double.infinity,
                               padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: canSubmit
+                                    ? const Color(0xFFE8F5E9)
+                                    : const Color(0xFFFFF3E0),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: canSubmit
+                                      ? const Color(0xFFA5D6A7)
+                                      : const Color(0xFFFFCC80),
+                                ),
+                              ),
                               child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
                                 children: [
+                                  Icon(
+                                    canSubmit
+                                        ? Icons.verified
+                                        : Icons.info_outline,
+                                    color: canSubmit
+                                        ? Colors.green
+                                        : Colors.orange,
+                                    size: 28,
+                                  ),
+                                  const SizedBox(width: 16),
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
-                                        Text(module['name'],
-                                            style: const TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 16)),
-                                        const SizedBox(height: 4),
-                                        Text(module['date'],
-                                            style: const TextStyle(
-                                                fontSize: 12,
-                                                color: Colors.grey)),
+                                        Text(
+                                          canSubmit
+                                              ? 'Ready to Submit!'
+                                              : 'Earn More Points',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
+                                            color: canSubmit
+                                                ? Colors.green
+                                                : Colors.orange,
+                                          ),
+                                        ),
+                                        Text(
+                                          canSubmit
+                                              ? "You have earned $totalEarnedPoints / $requiredPoints CATS points. You can now submit your credit claim."
+                                              : "You have earned $totalEarnedPoints / $requiredPoints CATS points. Complete more modules to reach $requiredPoints points and claim your credits.",
+                                          style: const TextStyle(fontSize: 14),
+                                        ),
                                       ],
                                     ),
-                                  ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 12, vertical: 6),
-                                    decoration: BoxDecoration(
-                                      color: Colors.green.withAlpha(26),
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                    child: Text("+${module['points']} pts",
-                                        style: const TextStyle(
-                                            color: Colors.green,
-                                            fontWeight: FontWeight.bold)),
                                   ),
                                 ],
                               ),
                             ),
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 24),
-                      // CATS Points Progress Card
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF3F4F6),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Column(
-                          children: [
-                            const Text("CATS Points Progress",
+                            const SizedBox(height: 20),
+                            // Registered modules list
+                            const Text(
+                              "My Registered Modules",
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            const Text(
+                              "Check in attendance to earn CATS points for each module.",
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            if (registeredModules.isEmpty)
+                              const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 24),
+                                child: Center(
+                                  child: Text(
+                                    "No modules registered yet.\nGo to Co-Curriculum Modules to register.",
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(color: Colors.grey),
+                                  ),
+                                ),
+                              )
+                            else
+                              ListView.builder(
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                itemCount: registeredModules.length,
+                                itemBuilder: (context, index) {
+                                  final module = registeredModules[index];
+                                  final name = module['moduleName'] as String;
+                                  final date = module['date'] as String;
+                                  final isAttended =
+                                      attendedModuleNames.contains(name);
+                                  return Card(
+                                    margin: const EdgeInsets.only(bottom: 12),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(16),
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  name,
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 16,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 4),
+                                                Text(
+                                                  date,
+                                                  style: const TextStyle(
+                                                    fontSize: 12,
+                                                    color: Colors.grey,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          if (isAttended)
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                horizontal: 12,
+                                                vertical: 6,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color:
+                                                    Colors.green.withAlpha(26),
+                                                borderRadius:
+                                                    BorderRadius.circular(20),
+                                              ),
+                                              child: Text(
+                                                "+$pointsPerModule pts",
+                                                style: const TextStyle(
+                                                  color: Colors.green,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            )
+                                          else
+                                            ElevatedButton(
+                                              onPressed: () =>
+                                                  Navigator.pushReplacementNamed(
+                                                context,
+                                                '/student/checkin',
+                                              ),
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: Colors.orange,
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                  horizontal: 12,
+                                                  vertical: 8,
+                                                ),
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                ),
+                                              ),
+                                              child: const Text(
+                                                "Check In",
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 13,
+                                                ),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            const SizedBox(height: 16),
+                            // Info note
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.shade50,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Text(
+                                "Note: Once submitted, your claim will be reviewed by the Co-Curriculum department. Approval may take 3-5 working days.",
+                                textAlign: TextAlign.center,
                                 style: TextStyle(
-                                    fontSize: 18, fontWeight: FontWeight.bold)),
-                            const SizedBox(height: 8),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceAround,
-                              children: [
-                                Column(
-                                  children: [
-                                    const Text("Earned",
-                                        style: TextStyle(fontSize: 14)),
-                                    Text("$totalEarnedPoints/$requiredPoints",
-                                        style: const TextStyle(
-                                            fontSize: 30,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.green)),
-                                  ],
+                                  fontSize: 12,
+                                  color: Colors.grey,
                                 ),
-                                Column(
-                                  children: [
-                                    const Text("Credits Earned",
-                                        style: TextStyle(fontSize: 14)),
-                                    Text(
-                                        "$creditsEarned/${requiredPoints ~/ 4}",
-                                        style: const TextStyle(
-                                            fontSize: 30,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.orange)),
-                                  ],
-                                ),
-                              ],
+                              ),
                             ),
-                            const SizedBox(height: 8),
-                            LinearProgressIndicator(
-                              value: totalEarnedPoints / requiredPoints,
-                              backgroundColor: Colors.grey.shade300,
-                              color: purplePrimary,
-                              minHeight: 8,
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                                "${requiredPoints - totalEarnedPoints} more CATS points needed to submit claim",
-                                style: const TextStyle(
-                                    fontSize: 12, color: Colors.grey)),
+                            const SizedBox(
+                              height: 80,
+                            ), // space for bottom button
                           ],
                         ),
                       ),
-                      const SizedBox(height: 16),
-                      // Info note
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.blue.shade50,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Text(
-                          "Note: Once submitted, your claim will be reviewed by the Co-Curriculum department. Approval may take 3-5 working days.",
-                          textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 12, color: Colors.grey),
-                        ),
-                      ),
-                      const SizedBox(height: 80), // space for bottom button
-                    ],
-                  ),
-                ),
               ),
             ],
           ),
@@ -328,7 +461,10 @@ class ClaimCreditScreenState extends State<ClaimCreditScreen> {
           color: Colors.white,
           boxShadow: [
             BoxShadow(
-                color: Colors.black12, blurRadius: 4, offset: Offset(0, -2))
+              color: Colors.black12,
+              blurRadius: 4,
+              offset: Offset(0, -2),
+            ),
           ],
         ),
         child: Padding(
@@ -340,13 +476,17 @@ class ClaimCreditScreenState extends State<ClaimCreditScreen> {
               disabledBackgroundColor: Colors.grey.shade400,
               minimumSize: const Size(double.infinity, 50),
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
-            child: const Text("Submit Credit Claim",
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold)),
+            child: const Text(
+              "Submit Credit Claim",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ),
       ),

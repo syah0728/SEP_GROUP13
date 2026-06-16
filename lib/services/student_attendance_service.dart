@@ -7,7 +7,7 @@ import '../models/manage_attendance/student_models.dart';
 StudentProfile _studentFromDoc(Map<String, dynamic> d) => StudentProfile(
   name: d['studentName'] ?? d['name'] ?? '',
   studentId: d['studentID'] ?? d['studentId'] ?? '',
-  matricId: d['matricId'] ?? d['matricID'] ?? '',
+  matricId: d['matricId'] ?? d['matricID'] ?? d['studentID'] ?? '',
   program: d['programme'] ?? d['program'] ?? '',
 );
 

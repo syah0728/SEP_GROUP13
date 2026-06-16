@@ -215,8 +215,6 @@ class StudentSidebar extends StatelessWidget {
             ),
           ),
 
-          // Divider and Logout Button at the bottom
-          const Divider(height: 1),
           buildMenuItem(
             context: context,
             icon: Icons.logout,

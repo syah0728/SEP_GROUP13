@@ -9,6 +9,8 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../../controllers/manage_financial/financial_controller.dart';
 import '../../../models/manage_financial/financial_model.dart';
+import '../../../services/session_service.dart';
+import '../../../widgets/treasury_drawer.dart';
 
 // ── Colours ───────────────────────────────────────────────────
 const _kTeal   = Color(0xFF45C5C3);
@@ -51,13 +53,16 @@ class _TreasuryStudentDetailViewState
 
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
+      drawer: TreasuryDrawer(
+        activePage: 'payments',
+        onLogout: () {
+          AppSession.clear();
+          Navigator.pushReplacementNamed(context, '/login');
+        },
+      ),
       appBar: AppBar(
         backgroundColor: _kTeal,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
         title: const Text(
           'Student Details',
           style: TextStyle(

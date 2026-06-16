@@ -140,8 +140,7 @@ class TreasuryDrawer extends StatelessWidget {
           // ── Logout ─────────────────────────────────────────
           ListTile(
             leading: const Icon(Icons.logout, color: Colors.red),
-            title:
-                const Text('Logout', style: TextStyle(color: Colors.red)),
+            title: const Text('Logout', style: TextStyle(color: Colors.red)),
             onTap: () {
               Navigator.pop(context);
               onLogout();
